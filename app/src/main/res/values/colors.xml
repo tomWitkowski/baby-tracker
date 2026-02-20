@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="feeding_color">#FFFF7B7B</color>
+    <color name="diaper_color">#FF4ECDC4</color>
+    <color name="background_color">#FFFAF8F5</color>
+    <color name="text_primary">#FF2C2C2C</color>
+    <color name="ic_launcher_background">#FFFAF8F5</color>
+</resources>

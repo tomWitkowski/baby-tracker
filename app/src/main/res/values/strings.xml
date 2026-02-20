@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Baby Tracker</string>
+    <string name="feeding">Karmienie</string>
+    <string name="diaper">Pieluszka</string>
+    <string name="bottle">Butelka</string>
+    <string name="natural">Naturalne</string>
+    <string name="pee">Siku</string>
+    <string name="poop">Kupka</string>
+    <string name="dashboard">Dashboard</string>
+    <string name="widget_description">Szybkie rejestrowanie zdarzeń noworodka</string>
+</resources>
