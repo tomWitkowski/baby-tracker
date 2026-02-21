@@ -98,6 +98,12 @@ class EventRepository @Inject constructor(
         )
     }
 
+    suspend fun getWeekStats(weekStartTimestamp: Long): List<DayStats> {
+        return (0 until 7).map { dayOffset ->
+            getDayStats(weekStartTimestamp + dayOffset * 86_400_000L)
+        }
+    }
+
     suspend fun getAllEventsForExport(): List<BabyEvent> = dao.getAllEventsSync()
 
     private fun getDayBounds(dayTimestamp: Long): Pair<Long, Long> {

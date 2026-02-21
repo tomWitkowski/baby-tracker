@@ -16,10 +16,14 @@ import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 
+enum class DashboardViewMode { DAY, WEEK }
+
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val repository: EventRepository
 ) : ViewModel() {
+
+    // ── Day view ─────────────────────────────────────────────────────────────
 
     private val _selectedDate = MutableStateFlow(todayMidnight())
     val selectedDate: StateFlow<Long> = _selectedDate.asStateFlow()
@@ -31,14 +35,35 @@ class DashboardViewModel @Inject constructor(
     private val _dayStats = MutableStateFlow<DayStats?>(null)
     val dayStats: StateFlow<DayStats?> = _dayStats.asStateFlow()
 
+    // ── Week view ─────────────────────────────────────────────────────────────
+
+    private val _viewMode = MutableStateFlow(DashboardViewMode.DAY)
+    val viewMode: StateFlow<DashboardViewMode> = _viewMode.asStateFlow()
+
+    private val _selectedWeekStart = MutableStateFlow(currentWeekStart())
+    val selectedWeekStart: StateFlow<Long> = _selectedWeekStart.asStateFlow()
+
+    // Reacts to both week changes and any database change
+    val weeklyStats: StateFlow<List<DayStats>?> = combine(
+        _selectedWeekStart,
+        repository.getAllEvents()
+    ) { weekStart, _ -> weekStart }
+        .flatMapLatest { weekStart ->
+            flow { emit(repository.getWeekStats(weekStart)) }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
     init {
-        // Recompute stats whenever day events change (which also triggers on date change)
         viewModelScope.launch {
             dayEvents.collect {
                 _dayStats.value = repository.getDayStats(_selectedDate.value)
             }
         }
     }
+
+    // ── Day navigation ────────────────────────────────────────────────────────
 
     fun selectDate(timestamp: Long) {
         _selectedDate.value = timestamp
@@ -56,6 +81,27 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun isToday(): Boolean = _selectedDate.value == todayMidnight()
+
+    // ── Week navigation ───────────────────────────────────────────────────────
+
+    fun setViewMode(mode: DashboardViewMode) {
+        _viewMode.value = mode
+    }
+
+    fun goToPreviousWeek() {
+        _selectedWeekStart.value -= 7 * 86_400_000L
+    }
+
+    fun goToNextWeek() {
+        val next = _selectedWeekStart.value + 7 * 86_400_000L
+        if (next <= currentWeekStart()) {
+            _selectedWeekStart.value = next
+        }
+    }
+
+    fun isCurrentWeek(): Boolean = _selectedWeekStart.value == currentWeekStart()
+
+    // ── Event operations ──────────────────────────────────────────────────────
 
     fun deleteEvent(event: BabyEvent) {
         viewModelScope.launch {
@@ -99,12 +145,27 @@ class DashboardViewModel @Inject constructor(
         return sb.toString()
     }
 
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
     private fun todayMidnight(): Long {
         val cal = Calendar.getInstance()
         cal.set(Calendar.HOUR_OF_DAY, 0)
         cal.set(Calendar.MINUTE, 0)
         cal.set(Calendar.SECOND, 0)
         cal.set(Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
+    }
+
+    private fun currentWeekStart(): Long {
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            val dayOfWeek = get(Calendar.DAY_OF_WEEK)
+            val daysToMonday = (dayOfWeek - Calendar.MONDAY + 7) % 7
+            add(Calendar.DAY_OF_MONTH, -daysToMonday)
+        }
         return cal.timeInMillis
     }
 }

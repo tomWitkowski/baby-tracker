@@ -57,6 +57,9 @@ fun DashboardScreen(
     val selectedDate by viewModel.selectedDate.collectAsState()
     val dayStats by viewModel.dayStats.collectAsState()
     val dayEvents by viewModel.dayEvents.collectAsState()
+    val viewMode by viewModel.viewMode.collectAsState()
+    val selectedWeekStart by viewModel.selectedWeekStart.collectAsState()
+    val weeklyStats by viewModel.weeklyStats.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var exportInProgress by remember { mutableStateOf(false) }
@@ -116,82 +119,128 @@ fun DashboardScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Date navigator
-            item {
-                DateNavigator(
-                    selectedDate = selectedDate,
-                    isToday = viewModel.isToday(),
-                    onPrevious = { viewModel.goToPreviousDay() },
-                    onNext = { viewModel.goToNextDay() }
+            // Tab row: Dzień / Tydzień
+            TabRow(
+                selectedTabIndex = if (viewMode == DashboardViewMode.DAY) 0 else 1,
+                containerColor = BackgroundColor,
+                contentColor = TextPrimary
+            ) {
+                Tab(
+                    selected = viewMode == DashboardViewMode.DAY,
+                    onClick = { viewModel.setViewMode(DashboardViewMode.DAY) },
+                    text = {
+                        Text(
+                            "Dzień",
+                            fontWeight = if (viewMode == DashboardViewMode.DAY) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
+                )
+                Tab(
+                    selected = viewMode == DashboardViewMode.WEEK,
+                    onClick = { viewModel.setViewMode(DashboardViewMode.WEEK) },
+                    text = {
+                        Text(
+                            "Tydzień",
+                            fontWeight = if (viewMode == DashboardViewMode.WEEK) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
                 )
             }
 
-            // Stats cards
-            item {
-                AnimatedContent(
-                    targetState = dayStats,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    label = "stats"
-                ) { stats ->
-                    if (stats != null) {
-                        StatsSection(stats = stats)
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = FeedingColor)
-                        }
-                    }
-                }
-            }
+            // Content
+            if (viewMode == DashboardViewMode.DAY) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item { Spacer(Modifier.height(4.dp)) }
 
-            // Events header
-            if (dayEvents.isNotEmpty()) {
-                item {
-                    Text(
-                        "Zdarzenia tego dnia",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-                items(dayEvents, key = { it.id }) { event ->
-                    DashboardEventRow(
-                        event = event,
-                        onDelete = { viewModel.deleteEvent(event) },
-                        onEdit = { editingEvent = event }
-                    )
-                }
-            } else {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 40.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "Brak zdarzeń w tym dniu",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TextHint,
-                            textAlign = TextAlign.Center
+                    // Date navigator
+                    item {
+                        DateNavigator(
+                            selectedDate = selectedDate,
+                            isToday = viewModel.isToday(),
+                            onPrevious = { viewModel.goToPreviousDay() },
+                            onNext = { viewModel.goToNextDay() }
                         )
                     }
-                }
-            }
 
-            item { Spacer(modifier = Modifier.height(24.dp)) }
+                    // Stats cards
+                    item {
+                        AnimatedContent(
+                            targetState = dayStats,
+                            transitionSpec = { fadeIn() togetherWith fadeOut() },
+                            label = "stats"
+                        ) { stats ->
+                            if (stats != null) {
+                                StatsSection(stats = stats)
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(180.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(color = FeedingColor)
+                                }
+                            }
+                        }
+                    }
+
+                    // Events header
+                    if (dayEvents.isNotEmpty()) {
+                        item {
+                            Text(
+                                "Zdarzenia tego dnia",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                        items(dayEvents, key = { it.id }) { event ->
+                            DashboardEventRow(
+                                event = event,
+                                onDelete = { viewModel.deleteEvent(event) },
+                                onEdit = { editingEvent = event }
+                            )
+                        }
+                    } else {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 40.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "Brak zdarzeń w tym dniu",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = TextHint,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
+                }
+            } else {
+                WeeklyView(
+                    weeklyStats = weeklyStats,
+                    selectedWeekStart = selectedWeekStart,
+                    isCurrentWeek = viewModel.isCurrentWeek(),
+                    onPrevious = { viewModel.goToPreviousWeek() },
+                    onNext = { viewModel.goToNextWeek() }
+                )
+            }
         }
     }
 
@@ -237,6 +286,263 @@ fun DashboardScreen(
     }
     } // end Box
 }
+
+// ── Weekly view ───────────────────────────────────────────────────────────────
+
+@Composable
+fun WeeklyView(
+    weeklyStats: List<DayStats>?,
+    selectedWeekStart: Long,
+    isCurrentWeek: Boolean,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit
+) {
+    if (weeklyStats == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = FeedingColor)
+        }
+        return
+    }
+
+    val todayMidnight = remember {
+        Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    }
+
+    val totalFeedings = weeklyStats.sumOf { it.totalFeedings }
+    val totalDiapers = weeklyStats.sumOf { it.totalDiapers }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item { Spacer(Modifier.height(4.dp)) }
+
+        item {
+            WeekNavigator(
+                weekStart = selectedWeekStart,
+                isCurrentWeek = isCurrentWeek,
+                onPrevious = onPrevious,
+                onNext = onNext
+            )
+        }
+
+        item {
+            WeeklyTotalsCard(totalFeedings = totalFeedings, totalDiapers = totalDiapers)
+        }
+
+        item {
+            Text(
+                "Dzień po dniu",
+                style = MaterialTheme.typography.labelMedium,
+                color = TextSecondary,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        items(weeklyStats) { dayStats ->
+            WeekDayRow(
+                dayStats = dayStats,
+                isToday = dayStats.date == todayMidnight
+            )
+        }
+
+        item { Spacer(Modifier.height(24.dp)) }
+    }
+}
+
+@Composable
+fun WeekNavigator(
+    weekStart: Long,
+    isCurrentWeek: Boolean,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit
+) {
+    val weekEnd = weekStart + 6 * 86_400_000L
+    val sdf = SimpleDateFormat("d MMM", Locale("pl"))
+    val weekLabel = "${sdf.format(Date(weekStart))} – ${sdf.format(Date(weekEnd))}"
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = SurfaceColor,
+        tonalElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            IconButton(onClick = onPrevious) {
+                Icon(Icons.Default.ChevronLeft, contentDescription = "Poprzedni tydzień", tint = TextPrimary)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    weekLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                    textAlign = TextAlign.Center
+                )
+                if (isCurrentWeek) {
+                    Text(
+                        "Ten tydzień",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = FeedingColor
+                    )
+                }
+            }
+            IconButton(onClick = onNext, enabled = !isCurrentWeek) {
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = "Następny tydzień",
+                    tint = if (isCurrentWeek) TextHint else TextPrimary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun WeeklyTotalsCard(totalFeedings: Int, totalDiapers: Int) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = SurfaceColor,
+        tonalElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("🍼", fontSize = 26.sp)
+                Text(
+                    totalFeedings.toString(),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = FeedingColor
+                )
+                Text("karmień", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+            }
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(60.dp)
+                    .background(TextHint.copy(alpha = 0.25f))
+            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("📌", fontSize = 26.sp)
+                Text(
+                    totalDiapers.toString(),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = DiaperColor
+                )
+                Text("pieluszek", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+            }
+        }
+    }
+}
+
+@Composable
+fun WeekDayRow(dayStats: DayStats, isToday: Boolean) {
+    val cal = Calendar.getInstance().apply { timeInMillis = dayStats.date }
+    val dayName = when (cal.get(Calendar.DAY_OF_WEEK)) {
+        Calendar.MONDAY -> "Pon"
+        Calendar.TUESDAY -> "Wt"
+        Calendar.WEDNESDAY -> "Śr"
+        Calendar.THURSDAY -> "Czw"
+        Calendar.FRIDAY -> "Pt"
+        Calendar.SATURDAY -> "Sob"
+        else -> "Ndz"
+    }
+    val dayDate = SimpleDateFormat("d MMM", Locale("pl")).format(Date(dayStats.date))
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = if (isToday) FeedingColor.copy(alpha = 0.09f) else SurfaceColor,
+        tonalElevation = if (isToday) 0.dp else 1.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Column(modifier = Modifier.width(40.dp)) {
+                    Text(
+                        dayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isToday) FeedingColor else TextPrimary
+                    )
+                    Text(
+                        dayDate,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary
+                    )
+                }
+                if (isToday) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = FeedingColor
+                    ) {
+                        Text(
+                            "Dziś",
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("🍼", fontSize = 14.sp)
+                    Text(
+                        dayStats.totalFeedings.toString(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (dayStats.totalFeedings > 0) FeedingColor else TextHint
+                    )
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("📌", fontSize = 14.sp)
+                    Text(
+                        dayStats.totalDiapers.toString(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (dayStats.totalDiapers > 0) DiaperColor else TextHint
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Day view composables ──────────────────────────────────────────────────────
 
 @Composable
 fun DateNavigator(
