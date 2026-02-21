@@ -27,9 +27,15 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun logNaturalFeeding() {
+    fun logBreastFeeding(subType: FeedingSubType) {
         viewModelScope.launch {
-            repository.logFeeding(FeedingSubType.NATURAL)
+            repository.logFeeding(subType)
+        }
+    }
+
+    fun logPump(milliliters: Int?) {
+        viewModelScope.launch {
+            repository.logFeeding(FeedingSubType.PUMP, milliliters)
         }
     }
 

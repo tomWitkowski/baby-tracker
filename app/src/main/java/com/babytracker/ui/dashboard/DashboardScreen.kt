@@ -304,8 +304,12 @@ fun StatsSection(stats: DayStats) {
                     StatRow("Butelka", stats.bottleFeedings.toString(), BottleColor,
                         if (stats.totalMl > 0) "· ${stats.totalMl}ml" else null)
                 )
-                if (stats.naturalFeedings > 0) add(
-                    StatRow("Naturalne", stats.naturalFeedings.toString(), NaturalColor, null)
+                if (stats.breastFeedings > 0) add(
+                    StatRow("Pierś", stats.breastFeedings.toString(), NaturalColor, null)
+                )
+                if (stats.pumpFeedings > 0) add(
+                    StatRow("Laktator", stats.pumpFeedings.toString(), PumpColor,
+                        if (stats.totalPumpMl > 0) "· ${stats.totalPumpMl}ml" else null)
                 )
             }
         )
@@ -436,18 +440,7 @@ fun DashboardEventRow(
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val time = timeFormat.format(Date(event.timestamp))
 
-    val (emoji, label, color) = when {
-        event.eventType == EventType.FEEDING.name && event.subType == FeedingSubType.BOTTLE.name ->
-            Triple("\uD83C\uDF7C", "Butelka${event.milliliters?.let { " · ${it}ml" } ?: ""}", BottleColor)
-        event.eventType == EventType.FEEDING.name ->
-            Triple("\uD83E\uDD31", "Karmienie naturalne", NaturalColor)
-        event.subType == DiaperSubType.PEE.name ->
-            Triple("\uD83D\uDFE1", "Siku", PeeColor)
-        event.subType == DiaperSubType.POOP.name ->
-            Triple("\uD83D\uDFE4", "Kupka", PoopColor)
-        else ->
-            Triple("\uD83D\uDFE0", "Mieszane", MixedColor)
-    }
+    val (emoji, label, color) = com.babytracker.ui.main.eventDisplayInfo(event)
 
     Surface(
         modifier = Modifier.fillMaxWidth(),

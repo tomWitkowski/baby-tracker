@@ -12,7 +12,8 @@ val DiaperColorLight = Color(0xFFB2EBE8)
 val DiaperColorContainer = Color(0xFFE0F7F5)
 
 val BottleColor = Color(0xFF5B8AF0)            // Blue for bottle
-val NaturalColor = Color(0xFFFF9FB2)           // Pink for natural feeding
+val NaturalColor = Color(0xFFFF9FB2)           // Pink for breast feeding
+val PumpColor = Color(0xFF78909C)              // Blue-grey for breast pump
 
 val PeeColor = Color(0xFFFFD166)               // Yellow for pee
 val PoopColor = Color(0xFFA0522D)              // Brown for poop

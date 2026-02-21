@@ -81,12 +81,17 @@ class DashboardViewModel @Inject constructor(
                 EventType.DIAPER.name -> "Pieluszka"
                 else -> event.eventType
             }
-            val subType = when {
-                event.subType == FeedingSubType.BOTTLE.name -> "Butelka"
-                event.subType == FeedingSubType.NATURAL.name -> "Naturalne"
-                event.subType == DiaperSubType.PEE.name -> "Siku"
-                event.subType == DiaperSubType.POOP.name -> "Kupka"
-                event.subType == DiaperSubType.MIXED.name -> "Mieszane"
+            val subType = when (event.subType) {
+                FeedingSubType.BOTTLE.name -> "Butelka"
+                FeedingSubType.BREAST_LEFT.name -> "Lewa pierś"
+                FeedingSubType.BREAST_RIGHT.name -> "Prawa pierś"
+                FeedingSubType.BREAST_BOTH_LR.name -> "Lewa+Prawa"
+                FeedingSubType.BREAST_BOTH_RL.name -> "Prawa+Lewa"
+                FeedingSubType.PUMP.name -> "Laktator"
+                FeedingSubType.NATURAL.name -> "Karmienie piersią"
+                DiaperSubType.PEE.name -> "Siku"
+                DiaperSubType.POOP.name -> "Kupka"
+                DiaperSubType.MIXED.name -> "Mieszane"
                 else -> event.subType
             }
             sb.appendLine("$time,$type,$subType,${event.milliliters ?: ""},${event.note ?: ""}")

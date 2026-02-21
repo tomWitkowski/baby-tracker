@@ -54,8 +54,10 @@ import java.util.*
 sealed class BottomSheetState {
     object Hidden : BottomSheetState()
     object FeedingOptions : BottomSheetState()
+    object BreastSideOptions : BottomSheetState()
     object DiaperOptions : BottomSheetState()
     object BottleMlInput : BottomSheetState()
+    object PumpMlInput : BottomSheetState()
     data class Editing(val event: BabyEvent) : BottomSheetState()
 }
 
@@ -68,6 +70,7 @@ fun MainScreen(
     val recentEvents by viewModel.recentEvents.collectAsState()
     var bottomSheetState by remember { mutableStateOf<BottomSheetState>(BottomSheetState.Hidden) }
     var mlInput by remember { mutableStateOf("") }
+    var pumpMlInput by remember { mutableStateOf("") }
     var showSuccessBadge by remember { mutableStateOf<String?>(null) }
     val haptic = LocalHapticFeedback.current
 
@@ -281,9 +284,29 @@ fun MainScreen(
                             mlInput = ""
                             bottomSheetState = BottomSheetState.BottleMlInput
                         },
-                        onNatural = {
-                            viewModel.logNaturalFeeding()
-                            showSuccessBadge = "Karmienie zapisane ✓"
+                        onBreast = { bottomSheetState = BottomSheetState.BreastSideOptions },
+                        onPump = {
+                            pumpMlInput = ""
+                            bottomSheetState = BottomSheetState.PumpMlInput
+                        },
+                        onDismiss = { bottomSheetState = BottomSheetState.Hidden }
+                    )
+                    BottomSheetState.BreastSideOptions -> BreastSideSheet(
+                        onSide = { subType ->
+                            viewModel.logBreastFeeding(subType)
+                            showSuccessBadge = "Karmienie piersią zapisane ✓"
+                            bottomSheetState = BottomSheetState.Hidden
+                        },
+                        onDismiss = { bottomSheetState = BottomSheetState.Hidden }
+                    )
+                    BottomSheetState.PumpMlInput -> PumpMlSheet(
+                        mlInput = pumpMlInput,
+                        onMlChange = { pumpMlInput = it },
+                        onConfirm = {
+                            val ml = pumpMlInput.toIntOrNull()
+                            viewModel.logPump(ml)
+                            val msg = if (ml != null) "Laktator ${ml}ml zapisany ✓" else "Laktator zapisany ✓"
+                            showSuccessBadge = msg
                             bottomSheetState = BottomSheetState.Hidden
                         },
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden }
@@ -398,7 +421,8 @@ fun ActionDot(
 fun FeedingSheet(
     onBottle: () -> Unit,
     onBottleWithMl: () -> Unit,
-    onNatural: () -> Unit,
+    onBreast: () -> Unit,
+    onPump: () -> Unit,
     onDismiss: () -> Unit
 ) {
     Column(
@@ -441,16 +465,175 @@ fun FeedingSheet(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        OptionCard(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            emoji = "\uD83E\uDD31",
-            title = "Karmienie naturalne",
-            subtitle = "Pierś",
-            color = NaturalColor,
-            onClick = onNatural
-        )
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OptionCard(
+                modifier = Modifier.weight(1f),
+                emoji = "\uD83E\uDD31",
+                title = "Karmienie piersią",
+                subtitle = "Wybierz stronę",
+                color = NaturalColor,
+                onClick = onBreast
+            )
+            OptionCard(
+                modifier = Modifier.weight(1f),
+                emoji = "\uD83E\uDED7",
+                title = "Laktator",
+                subtitle = "Opcjonalne ml",
+                color = PumpColor,
+                onClick = onPump
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(onClick = onDismiss) {
+            Text("Anuluj", color = TextSecondary)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+@Composable
+fun BreastSideSheet(
+    onSide: (FeedingSubType) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        SheetHandle()
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            "\uD83E\uDD31 Karmienie piersią",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OptionCard(
+                modifier = Modifier.weight(1f),
+                emoji = "⬅\uFE0F",
+                title = "Lewa",
+                subtitle = "",
+                color = NaturalColor,
+                onClick = { onSide(FeedingSubType.BREAST_LEFT) }
+            )
+            OptionCard(
+                modifier = Modifier.weight(1f),
+                emoji = "➡\uFE0F",
+                title = "Prawa",
+                subtitle = "",
+                color = NaturalColor,
+                onClick = { onSide(FeedingSubType.BREAST_RIGHT) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OptionCard(
+                modifier = Modifier.weight(1f),
+                emoji = "↔\uFE0F",
+                title = "Lewa+Prawa",
+                subtitle = "Zaczęła od lewej",
+                color = NaturalColor,
+                onClick = { onSide(FeedingSubType.BREAST_BOTH_LR) }
+            )
+            OptionCard(
+                modifier = Modifier.weight(1f),
+                emoji = "↔\uFE0F",
+                title = "Prawa+Lewa",
+                subtitle = "Zaczęła od prawej",
+                color = NaturalColor,
+                onClick = { onSide(FeedingSubType.BREAST_BOTH_RL) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(onClick = onDismiss) {
+            Text("Anuluj", color = TextSecondary)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+@Composable
+fun PumpMlSheet(
+    mlInput: String,
+    onMlChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        SheetHandle()
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            "\uD83E\uDED7 Laktator",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            "Ile mililitrów? (opcjonalne)",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+
+        OutlinedTextField(
+            value = mlInput,
+            onValueChange = { v -> if (v.length <= 4 && v.all { it.isDigit() }) onMlChange(v) },
+            label = { Text("Ilość") },
+            placeholder = { Text("np. 80") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PumpColor,
+                focusedLabelColor = PumpColor
+            ),
+            suffix = { Text("ml", color = TextSecondary) }
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onConfirm,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PumpColor)
+        ) {
+            Text(
+                if (mlInput.isEmpty()) "Zapisz bez ilości" else "Zapisz ${mlInput}ml",
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         TextButton(onClick = onDismiss) {
             Text("Anuluj", color = TextSecondary)
@@ -645,18 +828,7 @@ fun EventRow(
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val time = timeFormat.format(Date(event.timestamp))
 
-    val (emoji, label, color) = when {
-        event.eventType == EventType.FEEDING.name && event.subType == FeedingSubType.BOTTLE.name ->
-            Triple("\uD83C\uDF7C", "Butelka${event.milliliters?.let { " · ${it}ml" } ?: ""}", BottleColor)
-        event.eventType == EventType.FEEDING.name ->
-            Triple("\uD83E\uDD31", "Karmienie naturalne", NaturalColor)
-        event.subType == DiaperSubType.PEE.name ->
-            Triple("\uD83D\uDFE1", "Siku", PeeColor)
-        event.subType == DiaperSubType.POOP.name ->
-            Triple("\uD83D\uDFE4", "Kupka", PoopColor)
-        else ->
-            Triple("\uD83D\uDFE0", "Mieszane", MixedColor)
-    }
+    val (emoji, label, color) = eventDisplayInfo(event)
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -718,6 +890,27 @@ fun EventRow(
             }
         }
     }
+}
+
+fun eventDisplayInfo(event: BabyEvent): Triple<String, String, androidx.compose.ui.graphics.Color> = when {
+    event.eventType == EventType.FEEDING.name -> when (event.subType) {
+        FeedingSubType.BOTTLE.name ->
+            Triple("\uD83C\uDF7C", "Butelka${event.milliliters?.let { " · ${it}ml" } ?: ""}", BottleColor)
+        FeedingSubType.BREAST_LEFT.name ->
+            Triple("\uD83E\uDD31", "Lewa pierś", NaturalColor)
+        FeedingSubType.BREAST_RIGHT.name ->
+            Triple("\uD83E\uDD31", "Prawa pierś", NaturalColor)
+        FeedingSubType.BREAST_BOTH_LR.name ->
+            Triple("\uD83E\uDD31", "Lewa\u2192Prawa", NaturalColor)
+        FeedingSubType.BREAST_BOTH_RL.name ->
+            Triple("\uD83E\uDD31", "Prawa\u2192Lewa", NaturalColor)
+        FeedingSubType.PUMP.name ->
+            Triple("\uD83E\uDED7", "Laktator${event.milliliters?.let { " · ${it}ml" } ?: ""}", PumpColor)
+        else -> Triple("\uD83E\uDD31", "Karmienie piersią", NaturalColor)  // NATURAL legacy
+    }
+    event.subType == DiaperSubType.PEE.name -> Triple("\uD83D\uDFE1", "Siku", PeeColor)
+    event.subType == DiaperSubType.POOP.name -> Triple("\uD83D\uDFE4", "Kupka", PoopColor)
+    else -> Triple("\uD83D\uDFE0", "Mieszane", MixedColor)
 }
 
 @Composable

@@ -8,7 +8,13 @@ enum class EventType {
 }
 
 enum class FeedingSubType {
-    BOTTLE, NATURAL
+    BOTTLE,
+    BREAST_LEFT,       // lewa pierś
+    BREAST_RIGHT,      // prawa pierś
+    BREAST_BOTH_LR,    // lewa+prawa
+    BREAST_BOTH_RL,    // prawa+lewa
+    PUMP,              // laktator
+    NATURAL            // legacy — zachowane dla kompatybilności ze starymi wpisami
 }
 
 enum class DiaperSubType {

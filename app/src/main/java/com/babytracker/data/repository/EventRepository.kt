@@ -14,8 +14,10 @@ data class DayStats(
     val date: Long,
     val totalFeedings: Int,
     val bottleFeedings: Int,
-    val naturalFeedings: Int,
-    val totalMl: Int,
+    val breastFeedings: Int,   // wszystkie BREAST_* + legacy NATURAL
+    val pumpFeedings: Int,
+    val totalMl: Int,          // ml z butelek
+    val totalPumpMl: Int,      // ml z laktatora
     val totalDiapers: Int,
     val peeDiapers: Int,
     val poopDiapers: Int,
@@ -71,8 +73,10 @@ class EventRepository @Inject constructor(
         val (start, end) = getDayBounds(dayTimestamp)
         val totalFeedings = dao.countEventsOfType(EventType.FEEDING.name, start, end)
         val bottleFeedings = dao.countEventsOfSubType(EventType.FEEDING.name, FeedingSubType.BOTTLE.name, start, end)
-        val naturalFeedings = dao.countEventsOfSubType(EventType.FEEDING.name, FeedingSubType.NATURAL.name, start, end)
+        val breastFeedings = dao.countBreastFeedings(EventType.FEEDING.name, start, end)
+        val pumpFeedings = dao.countEventsOfSubType(EventType.FEEDING.name, FeedingSubType.PUMP.name, start, end)
         val totalMl = dao.totalMlForDay(start, end) ?: 0
+        val totalPumpMl = dao.totalPumpMlForDay(start, end) ?: 0
         val totalDiapers = dao.countEventsOfType(EventType.DIAPER.name, start, end)
         val peeDiapers = dao.countEventsOfSubType(EventType.DIAPER.name, DiaperSubType.PEE.name, start, end)
         val poopDiapers = dao.countEventsOfSubType(EventType.DIAPER.name, DiaperSubType.POOP.name, start, end)
@@ -82,8 +86,10 @@ class EventRepository @Inject constructor(
             date = dayTimestamp,
             totalFeedings = totalFeedings,
             bottleFeedings = bottleFeedings,
-            naturalFeedings = naturalFeedings,
+            breastFeedings = breastFeedings,
+            pumpFeedings = pumpFeedings,
             totalMl = totalMl,
+            totalPumpMl = totalPumpMl,
             totalDiapers = totalDiapers,
             peeDiapers = peeDiapers,
             poopDiapers = poopDiapers,

@@ -178,39 +178,96 @@ fun EditEventSheet(
         Spacer(Modifier.height(8.dp))
 
         if (editedEventType == EventType.FEEDING) {
+            // Row 1: Butelka + Laktator
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 listOf(
                     FeedingSubType.BOTTLE to ("\uD83C\uDF7C" to "Butelka"),
-                    FeedingSubType.NATURAL to ("\uD83E\uDD31" to "Naturalne")
+                    FeedingSubType.PUMP to ("\uD83E\uDED7" to "Laktator")
+                ).forEach { (subType, pair) ->
+                    val (emoji, label) = pair
+                    val selected = editedSubType == subType.name
+                    val tintColor = if (subType == FeedingSubType.BOTTLE) BottleColor else PumpColor
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (selected) tintColor.copy(alpha = 0.15f) else SurfaceColor,
+                        tonalElevation = if (selected) 0.dp else 1.dp,
+                        onClick = { editedSubType = subType.name }
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(emoji, fontSize = 20.sp)
+                            Text(label, style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (selected) tintColor else TextSecondary)
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            // Row 2: Breast sides
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    FeedingSubType.BREAST_LEFT to ("⬅\uFE0F" to "Lewa"),
+                    FeedingSubType.BREAST_RIGHT to ("➡\uFE0F" to "Prawa")
                 ).forEach { (subType, pair) ->
                     val (emoji, label) = pair
                     val selected = editedSubType == subType.name
                     Surface(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
-                        color = if (selected) BottleColor.copy(alpha = 0.15f) else SurfaceColor,
+                        color = if (selected) NaturalColor.copy(alpha = 0.15f) else SurfaceColor,
                         tonalElevation = if (selected) 0.dp else 1.dp,
                         onClick = { editedSubType = subType.name }
                     ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(emoji, fontSize = 22.sp)
-                            Text(
-                                label,
-                                style = MaterialTheme.typography.bodySmall,
+                        Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(emoji, fontSize = 20.sp)
+                            Text(label, style = MaterialTheme.typography.labelSmall,
                                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (selected) BottleColor else TextSecondary
-                            )
+                                color = if (selected) NaturalColor else TextSecondary)
                         }
                     }
                 }
             }
-            if (editedSubType == FeedingSubType.BOTTLE.name) {
+            Spacer(Modifier.height(8.dp))
+            // Row 3: Both sides
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    FeedingSubType.BREAST_BOTH_LR to ("↔\uFE0F" to "Lewa→Prawa"),
+                    FeedingSubType.BREAST_BOTH_RL to ("↔\uFE0F" to "Prawa→Lewa")
+                ).forEach { (subType, pair) ->
+                    val (emoji, label) = pair
+                    val selected = editedSubType == subType.name
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (selected) NaturalColor.copy(alpha = 0.15f) else SurfaceColor,
+                        tonalElevation = if (selected) 0.dp else 1.dp,
+                        onClick = { editedSubType = subType.name }
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(emoji, fontSize = 20.sp)
+                            Text(label, style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (selected) NaturalColor else TextSecondary)
+                        }
+                    }
+                }
+            }
+            val showMl = editedSubType == FeedingSubType.BOTTLE.name || editedSubType == FeedingSubType.PUMP.name
+            val mlColor = if (editedSubType == FeedingSubType.PUMP.name) PumpColor else BottleColor
+            if (showMl) {
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = editedMilliliters,
@@ -221,8 +278,8 @@ fun EditEventSheet(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BottleColor,
-                        focusedLabelColor = BottleColor
+                        focusedBorderColor = mlColor,
+                        focusedLabelColor = mlColor
                     ),
                     suffix = { Text("ml", color = TextSecondary) }
                 )
@@ -272,7 +329,8 @@ fun EditEventSheet(
 
         Button(
             onClick = {
-                val ml = if (editedSubType == FeedingSubType.BOTTLE.name) editedMilliliters.toIntOrNull() else null
+                val mlSubtypes = setOf(FeedingSubType.BOTTLE.name, FeedingSubType.PUMP.name)
+                val ml = if (editedSubType in mlSubtypes) editedMilliliters.toIntOrNull() else null
                 onSave(
                     event.copy(
                         timestamp = editedTimestamp,
