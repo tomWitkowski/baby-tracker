@@ -3,10 +3,15 @@ package com.babytracker.ui.dashboard
 import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,6 +41,7 @@ import com.babytracker.data.db.entity.DiaperSubType
 import com.babytracker.data.db.entity.EventType
 import com.babytracker.data.db.entity.FeedingSubType
 import com.babytracker.data.repository.DayStats
+import com.babytracker.ui.components.EditEventSheet
 import com.babytracker.ui.theme.*
 import kotlinx.coroutines.launch
 import java.io.File
@@ -53,7 +60,9 @@ fun DashboardScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var exportInProgress by remember { mutableStateOf(false) }
+    var editingEvent by remember { mutableStateOf<BabyEvent?>(null) }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         containerColor = BackgroundColor,
         topBar = {
@@ -160,7 +169,8 @@ fun DashboardScreen(
                 items(dayEvents, key = { it.id }) { event ->
                     DashboardEventRow(
                         event = event,
-                        onDelete = { viewModel.deleteEvent(event) }
+                        onDelete = { viewModel.deleteEvent(event) },
+                        onEdit = { editingEvent = event }
                     )
                 }
             } else {
@@ -184,6 +194,48 @@ fun DashboardScreen(
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
+
+    // Edit sheet overlay
+    AnimatedVisibility(
+        visible = editingEvent != null,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.45f))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { editingEvent = null }
+        )
+    }
+    AnimatedVisibility(
+        visible = editingEvent != null,
+        modifier = Modifier.align(Alignment.BottomCenter),
+        enter = slideInVertically { it },
+        exit = slideOutVertically { it }
+    ) {
+        editingEvent?.let { event ->
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                color = SurfaceColor,
+                tonalElevation = 4.dp
+            ) {
+                EditEventSheet(
+                    event = event,
+                    onDismiss = { editingEvent = null },
+                    onSave = { updatedEvent ->
+                        viewModel.updateEvent(updatedEvent)
+                        editingEvent = null
+                    }
+                )
+            }
+        }
+    }
+    } // end Box
 }
 
 @Composable
@@ -378,7 +430,8 @@ fun StatCard(
 @Composable
 fun DashboardEventRow(
     event: BabyEvent,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit = {}
 ) {
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val time = timeFormat.format(Date(event.timestamp))
@@ -400,7 +453,8 @@ fun DashboardEventRow(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         color = SurfaceColor,
-        tonalElevation = 1.dp
+        tonalElevation = 1.dp,
+        onClick = onEdit
     ) {
         Row(
             modifier = Modifier
@@ -429,6 +483,17 @@ fun DashboardEventRow(
                     time,
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary
+                )
+            }
+            IconButton(
+                onClick = onEdit,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Edytuj",
+                    tint = TextHint,
+                    modifier = Modifier.size(16.dp)
                 )
             }
             TextButton(

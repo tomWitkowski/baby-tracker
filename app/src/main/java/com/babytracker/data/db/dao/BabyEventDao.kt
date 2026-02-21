@@ -13,6 +13,9 @@ interface BabyEventDao {
     @Delete
     suspend fun deleteEvent(event: BabyEvent)
 
+    @Update
+    suspend fun updateEvent(event: BabyEvent)
+
     @Query("SELECT * FROM baby_events ORDER BY timestamp DESC")
     fun getAllEvents(): Flow<List<BabyEvent>>
 

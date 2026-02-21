@@ -59,6 +59,10 @@ class EventRepository @Inject constructor(
         dao.deleteEvent(event)
     }
 
+    suspend fun updateEvent(event: BabyEvent) {
+        dao.updateEvent(event)
+    }
+
     suspend fun deleteById(id: Long) {
         dao.deleteById(id)
     }

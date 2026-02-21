@@ -44,4 +44,10 @@ class MainViewModel @Inject constructor(
             repository.deleteEvent(event)
         }
     }
+
+    fun updateEvent(event: BabyEvent) {
+        viewModelScope.launch {
+            repository.updateEvent(event)
+        }
+    }
 }

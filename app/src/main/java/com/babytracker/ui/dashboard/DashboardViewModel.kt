@@ -63,6 +63,12 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    fun updateEvent(event: BabyEvent) {
+        viewModelScope.launch {
+            repository.updateEvent(event)
+        }
+    }
+
     suspend fun exportToCsv(context: Context): String {
         val events = repository.getAllEventsForExport()
         val sb = StringBuilder()

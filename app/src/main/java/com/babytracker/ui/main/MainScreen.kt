@@ -24,6 +24,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import com.babytracker.ui.components.EditEventSheet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,6 +56,7 @@ sealed class BottomSheetState {
     object FeedingOptions : BottomSheetState()
     object DiaperOptions : BottomSheetState()
     object BottleMlInput : BottomSheetState()
+    data class Editing(val event: BabyEvent) : BottomSheetState()
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -198,7 +201,8 @@ fun MainScreen(
                     items(recentEvents, key = { it.id }) { event ->
                         EventRow(
                             event = event,
-                            onDelete = { viewModel.deleteEvent(event) }
+                            onDelete = { viewModel.deleteEvent(event) },
+                            onEdit = { bottomSheetState = BottomSheetState.Editing(event) }
                         )
                     }
                 }
@@ -313,6 +317,14 @@ fun MainScreen(
                             bottomSheetState = BottomSheetState.Hidden
                         },
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden }
+                    )
+                    is BottomSheetState.Editing -> EditEventSheet(
+                        event = (bottomSheetState as BottomSheetState.Editing).event,
+                        onDismiss = { bottomSheetState = BottomSheetState.Hidden },
+                        onSave = { updatedEvent ->
+                            viewModel.updateEvent(updatedEvent)
+                            bottomSheetState = BottomSheetState.Hidden
+                        }
                     )
                     else -> {}
                 }
@@ -627,7 +639,8 @@ fun OptionCard(
 @Composable
 fun EventRow(
     event: BabyEvent,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit = {}
 ) {
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val time = timeFormat.format(Date(event.timestamp))
@@ -649,7 +662,8 @@ fun EventRow(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = color.copy(alpha = 0.08f),
-        tonalElevation = 0.dp
+        tonalElevation = 0.dp,
+        onClick = onEdit
     ) {
         Row(
             modifier = Modifier
@@ -678,6 +692,17 @@ fun EventRow(
                     time,
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary
+                )
+            }
+            IconButton(
+                onClick = onEdit,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Edytuj",
+                    tint = TextHint,
+                    modifier = Modifier.size(18.dp)
                 )
             }
             IconButton(
