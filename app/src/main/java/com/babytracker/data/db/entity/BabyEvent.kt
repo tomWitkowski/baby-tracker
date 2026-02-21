@@ -24,9 +24,9 @@ data class BabyEvent(
     val milliliters: Int? = null,  // Only for bottle feeding
     val note: String? = null
 ) {
-    fun getEventType(): EventType = EventType.valueOf(eventType)
-    fun getFeedingSubType(): FeedingSubType? = if (eventType == EventType.FEEDING.name)
+    fun toEventType(): EventType = EventType.valueOf(eventType)
+    fun toFeedingSubType(): FeedingSubType? = if (eventType == EventType.FEEDING.name)
         FeedingSubType.valueOf(subType) else null
-    fun getDiaperSubType(): DiaperSubType? = if (eventType == EventType.DIAPER.name)
+    fun toDiaperSubType(): DiaperSubType? = if (eventType == EventType.DIAPER.name)
         DiaperSubType.valueOf(subType) else null
 }
