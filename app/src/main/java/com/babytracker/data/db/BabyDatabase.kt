@@ -5,7 +5,9 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.babytracker.data.db.dao.BabyEventDao
+import com.babytracker.data.db.dao.SyncTombstoneDao
 import com.babytracker.data.db.entity.BabyEvent
+import com.babytracker.data.db.entity.SyncTombstone
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -17,11 +19,25 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE baby_events ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE baby_events SET updatedAt = timestamp")
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS sync_tombstones (
+                syncId TEXT NOT NULL PRIMARY KEY,
+                deletedAt INTEGER NOT NULL DEFAULT 0
+            )"""
+        )
+    }
+}
+
 @Database(
-    entities = [BabyEvent::class],
-    version = 2,
+    entities = [BabyEvent::class, SyncTombstone::class],
+    version = 3,
     exportSchema = false
 )
 abstract class BabyDatabase : RoomDatabase() {
     abstract fun babyEventDao(): BabyEventDao
+    abstract fun syncTombstoneDao(): SyncTombstoneDao
 }

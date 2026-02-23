@@ -34,7 +34,8 @@ data class BabyEvent(
     val subType: String,        // FeedingSubType or DiaperSubType name
     val timestamp: Long = System.currentTimeMillis(),
     val milliliters: Int? = null,  // Only for bottle feeding
-    val note: String? = null
+    val note: String? = null,
+    val updatedAt: Long = System.currentTimeMillis()
 ) {
     fun toEventType(): EventType = EventType.valueOf(eventType)
     fun toFeedingSubType(): FeedingSubType? = if (eventType == EventType.FEEDING.name)

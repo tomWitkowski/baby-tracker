@@ -1,10 +1,12 @@
 package com.babytracker.data.repository
 
 import com.babytracker.data.db.dao.BabyEventDao
+import com.babytracker.data.db.dao.SyncTombstoneDao
 import com.babytracker.data.db.entity.BabyEvent
 import com.babytracker.data.db.entity.DiaperSubType
 import com.babytracker.data.db.entity.EventType
 import com.babytracker.data.db.entity.FeedingSubType
+import com.babytracker.data.db.entity.SyncTombstone
 import kotlinx.coroutines.flow.Flow
 import java.util.Calendar
 import javax.inject.Inject
@@ -27,7 +29,8 @@ data class DayStats(
 
 @Singleton
 class EventRepository @Inject constructor(
-    private val dao: BabyEventDao
+    private val dao: BabyEventDao,
+    private val tombstoneDao: SyncTombstoneDao
 ) {
     fun getAllEvents(): Flow<List<BabyEvent>> = dao.getAllEvents()
 
@@ -58,14 +61,19 @@ class EventRepository @Inject constructor(
     }
 
     suspend fun deleteEvent(event: BabyEvent) {
+        tombstoneDao.insertTombstone(SyncTombstone(syncId = event.syncId))
         dao.deleteEvent(event)
     }
 
     suspend fun updateEvent(event: BabyEvent) {
-        dao.updateEvent(event)
+        dao.updateEvent(event.copy(updatedAt = System.currentTimeMillis()))
     }
 
     suspend fun deleteById(id: Long) {
+        val event = dao.getEventById(id)
+        if (event != null) {
+            tombstoneDao.insertTombstone(SyncTombstone(syncId = event.syncId))
+        }
         dao.deleteById(id)
     }
 

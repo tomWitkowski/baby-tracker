@@ -5,6 +5,7 @@ import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.util.Log
 import com.babytracker.data.db.dao.BabyEventDao
+import com.babytracker.data.db.dao.SyncTombstoneDao
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +37,8 @@ sealed class SyncState {
 @Singleton
 class SyncManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val dao: BabyEventDao
+    private val dao: BabyEventDao,
+    private val tombstoneDao: SyncTombstoneDao
 ) {
     companion object {
         private const val TAG = "SyncManager"
@@ -76,6 +78,10 @@ class SyncManager @Inject constructor(
         startNsd()
     }
 
+    // -------------------------------------------------------------------------
+    // TCP server
+    // -------------------------------------------------------------------------
+
     private fun startServer() {
         scope.launch {
             try {
@@ -99,20 +105,25 @@ class SyncManager @Inject constructor(
 
                 val json = reader.readLine() ?: return
                 val received = SyncMessage.fromJson(json)
-                Log.d(TAG, "Server: received ${received.events.size} events from ${received.deviceId}")
+                Log.d(TAG, "Server: received ${received.events.size} events, ${received.tombstones.size} tombstones from ${received.deviceId}")
+
+                // Merge their data, then send back our current state (post-merge)
+                mergeReceivedData(received)
 
                 val ourEvents = dao.getAllEventsSync()
-                writer.println(SyncMessage(deviceId, ourEvents).toJson())
+                val ourTombstones = tombstoneDao.getAllTombstones()
+                writer.println(SyncMessage(deviceId, ourEvents, ourTombstones).toJson())
 
-                received.events.forEach { event ->
-                    dao.insertEventIgnore(event.copy(id = 0))
-                }
-                Log.d(TAG, "Server: sync complete")
+                Log.d(TAG, "Server: sync complete, sent ${ourEvents.size} events back")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling incoming connection: ${e.message}")
         }
     }
+
+    // -------------------------------------------------------------------------
+    // NSD (mDNS service discovery)
+    // -------------------------------------------------------------------------
 
     private fun startNsd() {
         nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
@@ -176,6 +187,10 @@ class SyncManager @Inject constructor(
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Client-initiated sync
+    // -------------------------------------------------------------------------
+
     suspend fun syncNow() {
         val current = _syncState.value
         if (current is SyncState.Syncing || current is SyncState.Searching) return
@@ -199,27 +214,23 @@ class SyncManager @Inject constructor(
         _syncState.value = SyncState.Syncing
 
         try {
-            val addedCount = withContext(Dispatchers.IO) {
+            val changes = withContext(Dispatchers.IO) {
                 Socket(host, discoveredPort).use { socket ->
                     val reader = BufferedReader(InputStreamReader(socket.inputStream))
                     val writer = PrintWriter(socket.outputStream, true)
 
                     val ourEvents = dao.getAllEventsSync()
-                    writer.println(SyncMessage(deviceId, ourEvents).toJson())
+                    val ourTombstones = tombstoneDao.getAllTombstones()
+                    writer.println(SyncMessage(deviceId, ourEvents, ourTombstones).toJson())
 
                     val json = reader.readLine() ?: return@use 0
                     val received = SyncMessage.fromJson(json)
-                    Log.d(TAG, "Client: received ${received.events.size} events")
+                    Log.d(TAG, "Client: received ${received.events.size} events, ${received.tombstones.size} tombstones")
 
-                    var added = 0
-                    received.events.forEach { event ->
-                        val result = dao.insertEventIgnore(event.copy(id = 0))
-                        if (result != -1L) added++
-                    }
-                    added
+                    mergeReceivedData(received)
                 }
             }
-            _syncState.value = SyncState.Success(addedCount)
+            _syncState.value = SyncState.Success(changes)
         } catch (e: Exception) {
             Log.e(TAG, "Sync error: ${e.message}")
             _syncState.value = SyncState.Error(e.message ?: "Błąd połączenia")
@@ -227,5 +238,49 @@ class SyncManager @Inject constructor(
 
         delay(RESULT_DISPLAY_MS)
         _syncState.value = SyncState.Idle
+    }
+
+    // -------------------------------------------------------------------------
+    // Merge logic
+    // -------------------------------------------------------------------------
+
+    /**
+     * Merges received data into local DB.
+     * Rules:
+     * 1. Tombstones (deletions) are applied first — deletion always wins.
+     * 2. For events: insert if new, update if the received version is newer (updatedAt).
+     *    Skip if the event is locally tombstoned (we deleted it).
+     *
+     * Returns count of local DB rows changed.
+     */
+    private suspend fun mergeReceivedData(received: SyncMessage): Int {
+        var changes = 0
+
+        // Step 1: apply tombstones
+        received.tombstones.forEach { tombstone ->
+            tombstoneDao.insertTombstone(tombstone)
+            val deleted = dao.deleteEventBySyncId(tombstone.syncId)
+            if (deleted > 0) changes++
+        }
+
+        // Step 2: apply events (skip if we tombstoned them locally)
+        received.events.forEach { event ->
+            if (tombstoneDao.countBySyncId(event.syncId) > 0) return@forEach
+
+            val existing = dao.getEventBySyncId(event.syncId)
+            when {
+                existing == null -> {
+                    val result = dao.insertEventIgnore(event.copy(id = 0))
+                    if (result != -1L) changes++
+                }
+                event.updatedAt > existing.updatedAt -> {
+                    dao.updateEvent(event.copy(id = existing.id))
+                    changes++
+                }
+                // else: our version is equal or newer — keep it
+            }
+        }
+
+        return changes
     }
 }

@@ -46,8 +46,17 @@ interface BabyEventDao {
     @Query("SELECT * FROM baby_events ORDER BY timestamp DESC")
     suspend fun getAllEventsSync(): List<BabyEvent>
 
+    @Query("SELECT * FROM baby_events WHERE id = :id LIMIT 1")
+    suspend fun getEventById(id: Long): BabyEvent?
+
+    @Query("SELECT * FROM baby_events WHERE syncId = :syncId LIMIT 1")
+    suspend fun getEventBySyncId(syncId: String): BabyEvent?
+
     @Query("DELETE FROM baby_events WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM baby_events WHERE syncId = :syncId")
+    suspend fun deleteEventBySyncId(syncId: String): Int
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertEventIgnore(event: BabyEvent): Long
