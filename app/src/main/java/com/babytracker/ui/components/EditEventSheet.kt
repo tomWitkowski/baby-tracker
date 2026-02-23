@@ -23,10 +23,20 @@ import com.babytracker.data.db.entity.BabyEvent
 import com.babytracker.data.db.entity.DiaperSubType
 import com.babytracker.data.db.entity.EventType
 import com.babytracker.data.db.entity.FeedingSubType
+import com.babytracker.ui.i18n.LocalStrings
 import com.babytracker.ui.main.SheetHandle
 import com.babytracker.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
+
+private val ML_SUBTYPES = setOf(
+    FeedingSubType.BOTTLE.name,
+    FeedingSubType.PUMP.name,
+    FeedingSubType.PUMP_LEFT.name,
+    FeedingSubType.PUMP_RIGHT.name,
+    FeedingSubType.PUMP_BOTH_LR.name,
+    FeedingSubType.PUMP_BOTH_RL.name
+)
 
 @Composable
 fun EditEventSheet(
@@ -34,6 +44,7 @@ fun EditEventSheet(
     onDismiss: () -> Unit,
     onSave: (BabyEvent) -> Unit
 ) {
+    val strings = LocalStrings.current
     var editedTimestamp by remember { mutableStateOf(event.timestamp) }
     var editedEventType by remember { mutableStateOf(event.toEventType()) }
     var editedSubType by remember { mutableStateOf(event.subType) }
@@ -46,20 +57,14 @@ fun EditEventSheet(
         DatePickerWrapper(
             timestamp = editedTimestamp,
             onDismiss = { showDatePicker = false },
-            onDateSelected = { newTs ->
-                editedTimestamp = newTs
-                showDatePicker = false
-            }
+            onDateSelected = { newTs -> editedTimestamp = newTs; showDatePicker = false }
         )
     }
     if (showTimePicker) {
         TimePickerWrapper(
             timestamp = editedTimestamp,
             onDismiss = { showTimePicker = false },
-            onTimeSelected = { newTs ->
-                editedTimestamp = newTs
-                showTimePicker = false
-            }
+            onTimeSelected = { newTs -> editedTimestamp = newTs; showTimePicker = false }
         )
     }
 
@@ -73,7 +78,7 @@ fun EditEventSheet(
         SheetHandle()
         Spacer(Modifier.height(16.dp))
         Text(
-            "Edytuj zdarzenie",
+            strings.editEvent,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
@@ -81,11 +86,8 @@ fun EditEventSheet(
         Spacer(Modifier.height(24.dp))
 
         // Date + time row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            val dateStr = SimpleDateFormat("d MMM yyyy", Locale("pl")).format(Date(editedTimestamp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            val dateStr = SimpleDateFormat("d MMM yyyy", strings.locale).format(Date(editedTimestamp))
             Surface(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(14.dp),
@@ -100,12 +102,11 @@ fun EditEventSheet(
                 ) {
                     Icon(Icons.Default.CalendarToday, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                     Column {
-                        Text("Data", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                        Text(strings.dateLabel, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
                         Text(dateStr, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = TextPrimary)
                     }
                 }
             }
-
             val timeStr = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(editedTimestamp))
             Surface(
                 modifier = Modifier.weight(1f),
@@ -121,7 +122,7 @@ fun EditEventSheet(
                 ) {
                     Icon(Icons.Default.Schedule, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                     Column {
-                        Text("Godzina", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                        Text(strings.timeLabel, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
                         Text(timeStr, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = TextPrimary)
                     }
                 }
@@ -131,17 +132,16 @@ fun EditEventSheet(
         Spacer(Modifier.height(20.dp))
 
         // Event type selector
-        Text("Typ zdarzenia", style = MaterialTheme.typography.labelMedium, color = TextSecondary, modifier = Modifier.fillMaxWidth())
+        Text(strings.eventTypeLabel, style = MaterialTheme.typography.labelMedium, color = TextSecondary, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             EventType.entries.forEach { type ->
                 val selected = editedEventType == type
-                val color = if (type == EventType.FEEDING) FeedingColor else DiaperColor
-                val emoji = if (type == EventType.FEEDING) "\uD83C\uDF7C" else "\uD83D\uDCCD"
-                val label = if (type == EventType.FEEDING) "Karmienie" else "Pieluszka"
+                val (color, emoji, label) = when (type) {
+                    EventType.FEEDING -> Triple(FeedingColor, "\uD83C\uDF7C", strings.feeding)
+                    EventType.DIAPER -> Triple(DiaperColor, "\uD83D\uDCCD", strings.diaper)
+                    EventType.SPIT_UP -> Triple(SpitUpColor, "\u21A9\uFE0F", strings.spitUp)
+                }
                 Surface(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
@@ -149,20 +149,22 @@ fun EditEventSheet(
                     tonalElevation = if (selected) 0.dp else 1.dp,
                     onClick = {
                         editedEventType = type
-                        editedSubType = if (type == EventType.FEEDING) FeedingSubType.BOTTLE.name else DiaperSubType.PEE.name
-                        if (type == EventType.DIAPER) editedMilliliters = ""
+                        editedSubType = when (type) {
+                            EventType.FEEDING -> FeedingSubType.BOTTLE.name
+                            EventType.DIAPER -> DiaperSubType.PEE.name
+                            EventType.SPIT_UP -> EventType.SPIT_UP.name
+                        }
+                        if (type != EventType.FEEDING) editedMilliliters = ""
                     }
                 ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                    Column(
+                        modifier = Modifier.padding(10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(emoji, fontSize = 18.sp)
-                        Spacer(Modifier.width(6.dp))
                         Text(
                             label,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.labelSmall,
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                             color = if (selected) color else TextSecondary
                         )
@@ -173,155 +175,101 @@ fun EditEventSheet(
 
         Spacer(Modifier.height(16.dp))
 
-        // Subtype selector
-        Text("Szczegóły", style = MaterialTheme.typography.labelMedium, color = TextSecondary, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
+        // Subtype selector (hidden for SPIT_UP)
+        if (editedEventType != EventType.SPIT_UP) {
+            Text(strings.details, style = MaterialTheme.typography.labelMedium, color = TextSecondary, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
 
-        if (editedEventType == EventType.FEEDING) {
-            // Row 1: Butelka + Laktator
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf(
-                    FeedingSubType.BOTTLE to ("\uD83C\uDF7C" to "Butelka"),
-                    FeedingSubType.PUMP to ("\uD83E\uDED7" to "Laktator")
-                ).forEach { (subType, pair) ->
-                    val (emoji, label) = pair
-                    val selected = editedSubType == subType.name
-                    val tintColor = if (subType == FeedingSubType.BOTTLE) BottleColor else PumpColor
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (selected) tintColor.copy(alpha = 0.15f) else SurfaceColor,
-                        tonalElevation = if (selected) 0.dp else 1.dp,
-                        onClick = { editedSubType = subType.name }
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(10.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(emoji, fontSize = 20.sp)
-                            Text(label, style = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (selected) tintColor else TextSecondary)
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            // Row 2: Breast sides
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf(
-                    FeedingSubType.BREAST_LEFT to ("⬅\uFE0F" to "Lewa"),
-                    FeedingSubType.BREAST_RIGHT to ("➡\uFE0F" to "Prawa")
-                ).forEach { (subType, pair) ->
-                    val (emoji, label) = pair
-                    val selected = editedSubType == subType.name
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (selected) NaturalColor.copy(alpha = 0.15f) else SurfaceColor,
-                        tonalElevation = if (selected) 0.dp else 1.dp,
-                        onClick = { editedSubType = subType.name }
-                    ) {
-                        Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(emoji, fontSize = 20.sp)
-                            Text(label, style = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (selected) NaturalColor else TextSecondary)
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            // Row 3: Both sides
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf(
-                    FeedingSubType.BREAST_BOTH_LR to ("↔\uFE0F" to "Lewa→Prawa"),
-                    FeedingSubType.BREAST_BOTH_RL to ("↔\uFE0F" to "Prawa→Lewa")
-                ).forEach { (subType, pair) ->
-                    val (emoji, label) = pair
-                    val selected = editedSubType == subType.name
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (selected) NaturalColor.copy(alpha = 0.15f) else SurfaceColor,
-                        tonalElevation = if (selected) 0.dp else 1.dp,
-                        onClick = { editedSubType = subType.name }
-                    ) {
-                        Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(emoji, fontSize = 20.sp)
-                            Text(label, style = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (selected) NaturalColor else TextSecondary)
-                        }
-                    }
-                }
-            }
-            val showMl = editedSubType == FeedingSubType.BOTTLE.name || editedSubType == FeedingSubType.PUMP.name
-            val mlColor = if (editedSubType == FeedingSubType.PUMP.name) PumpColor else BottleColor
-            if (showMl) {
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = editedMilliliters,
-                    onValueChange = { v -> if (v.length <= 4 && v.all { it.isDigit() }) editedMilliliters = v },
-                    label = { Text("Ilość ml (opcjonalne)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = mlColor,
-                        focusedLabelColor = mlColor
+            if (editedEventType == EventType.FEEDING) {
+                // Row 1: Bottle
+                SubTypeRow(
+                    items = listOf(
+                        SubTypeItem(FeedingSubType.BOTTLE.name, "\uD83C\uDF7C", strings.bottle, BottleColor)
                     ),
-                    suffix = { Text("ml", color = TextSecondary) }
+                    selectedSubType = editedSubType,
+                    onSelect = { editedSubType = it }
                 )
-            }
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf(
-                    DiaperSubType.PEE to ("\uD83D\uDFE1" to "Siku"),
-                    DiaperSubType.POOP to ("\uD83D\uDFE4" to "Kupka"),
-                    DiaperSubType.MIXED to ("\uD83D\uDFE0" to "Mieszane")
-                ).forEach { (subType, pair) ->
-                    val (emoji, label) = pair
-                    val selected = editedSubType == subType.name
-                    val color = when (subType) {
-                        DiaperSubType.PEE -> PeeColor
-                        DiaperSubType.POOP -> PoopColor
-                        DiaperSubType.MIXED -> MixedColor
-                    }
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (selected) color.copy(alpha = 0.15f) else SurfaceColor,
-                        tonalElevation = if (selected) 0.dp else 1.dp,
-                        onClick = { editedSubType = subType.name }
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(10.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(emoji, fontSize = 20.sp)
-                            Text(
-                                label,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (selected) color else TextSecondary
-                            )
-                        }
-                    }
+                Spacer(Modifier.height(8.dp))
+                // Row 2: Breast left / right
+                SubTypeRow(
+                    items = listOf(
+                        SubTypeItem(FeedingSubType.BREAST_LEFT.name, "\u2B05\uFE0F", strings.breastLeft, NaturalColor),
+                        SubTypeItem(FeedingSubType.BREAST_RIGHT.name, "\u27A1\uFE0F", strings.breastRight, NaturalColor)
+                    ),
+                    selectedSubType = editedSubType,
+                    onSelect = { editedSubType = it }
+                )
+                Spacer(Modifier.height(8.dp))
+                // Row 3: Breast both
+                SubTypeRow(
+                    items = listOf(
+                        SubTypeItem(FeedingSubType.BREAST_BOTH_LR.name, "\u2194\uFE0F", "${strings.breastLeft}\u2192${strings.breastRight}", NaturalColor),
+                        SubTypeItem(FeedingSubType.BREAST_BOTH_RL.name, "\u2194\uFE0F", "${strings.breastRight}\u2192${strings.breastLeft}", NaturalColor)
+                    ),
+                    selectedSubType = editedSubType,
+                    onSelect = { editedSubType = it }
+                )
+                Spacer(Modifier.height(8.dp))
+                // Row 4: Pump left / right
+                SubTypeRow(
+                    items = listOf(
+                        SubTypeItem(FeedingSubType.PUMP_LEFT.name, "\u2B05\uFE0F", "${strings.pump} ${strings.breastLeft}", PumpColor),
+                        SubTypeItem(FeedingSubType.PUMP_RIGHT.name, "\u27A1\uFE0F", "${strings.pump} ${strings.breastRight}", PumpColor)
+                    ),
+                    selectedSubType = editedSubType,
+                    onSelect = { editedSubType = it }
+                )
+                Spacer(Modifier.height(8.dp))
+                // Row 5: Pump both
+                SubTypeRow(
+                    items = listOf(
+                        SubTypeItem(FeedingSubType.PUMP_BOTH_LR.name, "\u2194\uFE0F", "${strings.pump} L\u2192P", PumpColor),
+                        SubTypeItem(FeedingSubType.PUMP_BOTH_RL.name, "\u2194\uFE0F", "${strings.pump} P\u2192L", PumpColor)
+                    ),
+                    selectedSubType = editedSubType,
+                    onSelect = { editedSubType = it }
+                )
+                // Legacy PUMP (shown only if event was created with it)
+                if (editedSubType == FeedingSubType.PUMP.name) {
+                    Spacer(Modifier.height(8.dp))
+                    SubTypeRow(
+                        items = listOf(
+                            SubTypeItem(FeedingSubType.PUMP.name, "\uD83E\uDED7", strings.pump, PumpColor)
+                        ),
+                        selectedSubType = editedSubType,
+                        onSelect = { editedSubType = it }
+                    )
                 }
+                // ML input for bottle/pump subtypes
+                if (editedSubType in ML_SUBTYPES) {
+                    val mlColor = if (editedSubType == FeedingSubType.BOTTLE.name) BottleColor else PumpColor
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = editedMilliliters,
+                        onValueChange = { v -> if (v.length <= 4 && v.all { it.isDigit() }) editedMilliliters = v },
+                        label = { Text(strings.mlOptional) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = mlColor,
+                            focusedLabelColor = mlColor
+                        ),
+                        suffix = { Text("ml", color = TextSecondary) }
+                    )
+                }
+            } else {
+                // Diaper subtypes
+                SubTypeRow(
+                    items = listOf(
+                        SubTypeItem(DiaperSubType.PEE.name, "\uD83D\uDFE1", strings.pee, PeeColor),
+                        SubTypeItem(DiaperSubType.POOP.name, "\uD83D\uDFE4", strings.poop, PoopColor),
+                        SubTypeItem(DiaperSubType.MIXED.name, "\uD83D\uDFE0", strings.mixed, MixedColor)
+                    ),
+                    selectedSubType = editedSubType,
+                    onSelect = { editedSubType = it }
+                )
             }
         }
 
@@ -329,8 +277,7 @@ fun EditEventSheet(
 
         Button(
             onClick = {
-                val mlSubtypes = setOf(FeedingSubType.BOTTLE.name, FeedingSubType.PUMP.name)
-                val ml = if (editedSubType in mlSubtypes) editedMilliliters.toIntOrNull() else null
+                val ml = if (editedSubType in ML_SUBTYPES) editedMilliliters.toIntOrNull() else null
                 onSave(
                     event.copy(
                         timestamp = editedTimestamp,
@@ -340,21 +287,58 @@ fun EditEventSheet(
                     )
                 )
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = TextPrimary)
         ) {
-            Text("Zapisz zmiany", fontWeight = FontWeight.SemiBold, color = SurfaceColor)
+            Text(strings.saveChanges, fontWeight = FontWeight.SemiBold, color = SurfaceColor)
         }
         Spacer(Modifier.height(4.dp))
         TextButton(onClick = onDismiss) {
-            Text("Anuluj", color = TextSecondary)
+            Text(strings.cancel, color = TextSecondary)
         }
         Spacer(Modifier.height(8.dp))
     }
 }
+
+// ── Sub-type row helper ───────────────────────────────────────────────────────
+
+private data class SubTypeItem(val subType: String, val emoji: String, val label: String, val color: androidx.compose.ui.graphics.Color)
+
+@Composable
+private fun SubTypeRow(
+    items: List<SubTypeItem>,
+    selectedSubType: String,
+    onSelect: (String) -> Unit
+) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.forEach { item ->
+            val selected = selectedSubType == item.subType
+            Surface(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                color = if (selected) item.color.copy(alpha = 0.15f) else SurfaceColor,
+                tonalElevation = if (selected) 0.dp else 1.dp,
+                onClick = { onSelect(item.subType) }
+            ) {
+                Column(
+                    modifier = Modifier.padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(item.emoji, fontSize = 20.sp)
+                    Text(
+                        item.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (selected) item.color else TextSecondary
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Date/time pickers ─────────────────────────────────────────────────────────
 
 @Composable
 private fun DatePickerWrapper(
@@ -413,7 +397,7 @@ private fun TimePickerWrapper(
             },
             cal.get(Calendar.HOUR_OF_DAY),
             cal.get(Calendar.MINUTE),
-            true // 24h
+            true
         )
         dialog.setOnDismissListener { if (!handled) onDismiss() }
         dialog.show()

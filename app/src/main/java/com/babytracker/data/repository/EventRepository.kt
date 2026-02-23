@@ -17,13 +17,14 @@ data class DayStats(
     val totalFeedings: Int,
     val bottleFeedings: Int,
     val breastFeedings: Int,   // wszystkie BREAST_* + legacy NATURAL
-    val pumpFeedings: Int,
+    val pumpFeedings: Int,     // wszystkie PUMP_*
     val totalMl: Int,          // ml z butelek
-    val totalPumpMl: Int,      // ml z laktatora
+    val totalPumpMl: Int,      // ml z laktatora (wszystkie PUMP_*)
     val totalDiapers: Int,
     val peeDiapers: Int,
     val poopDiapers: Int,
     val mixedDiapers: Int,
+    val spitUpCount: Int,
     val events: List<BabyEvent>
 )
 
@@ -60,6 +61,15 @@ class EventRepository @Inject constructor(
         )
     }
 
+    suspend fun logSpitUp() {
+        dao.insertEvent(
+            BabyEvent(
+                eventType = EventType.SPIT_UP.name,
+                subType = EventType.SPIT_UP.name
+            )
+        )
+    }
+
     suspend fun deleteEvent(event: BabyEvent) {
         tombstoneDao.insertTombstone(SyncTombstone(syncId = event.syncId))
         dao.deleteEvent(event)
@@ -82,13 +92,14 @@ class EventRepository @Inject constructor(
         val totalFeedings = dao.countEventsOfType(EventType.FEEDING.name, start, end)
         val bottleFeedings = dao.countEventsOfSubType(EventType.FEEDING.name, FeedingSubType.BOTTLE.name, start, end)
         val breastFeedings = dao.countBreastFeedings(EventType.FEEDING.name, start, end)
-        val pumpFeedings = dao.countEventsOfSubType(EventType.FEEDING.name, FeedingSubType.PUMP.name, start, end)
+        val pumpFeedings = dao.countPumpFeedings(start, end)
         val totalMl = dao.totalMlForDay(start, end) ?: 0
         val totalPumpMl = dao.totalPumpMlForDay(start, end) ?: 0
         val totalDiapers = dao.countEventsOfType(EventType.DIAPER.name, start, end)
         val peeDiapers = dao.countEventsOfSubType(EventType.DIAPER.name, DiaperSubType.PEE.name, start, end)
         val poopDiapers = dao.countEventsOfSubType(EventType.DIAPER.name, DiaperSubType.POOP.name, start, end)
         val mixedDiapers = dao.countEventsOfSubType(EventType.DIAPER.name, DiaperSubType.MIXED.name, start, end)
+        val spitUpCount = dao.countSpitUpEvents(start, end)
 
         return DayStats(
             date = dayTimestamp,
@@ -102,6 +113,7 @@ class EventRepository @Inject constructor(
             peeDiapers = peeDiapers,
             poopDiapers = poopDiapers,
             mixedDiapers = mixedDiapers,
+            spitUpCount = spitUpCount,
             events = emptyList()
         )
     }

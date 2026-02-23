@@ -18,6 +18,8 @@ val PumpColor = Color(0xFF78909C)              // Blue-grey for breast pump
 val PeeColor = Color(0xFFFFD166)               // Yellow for pee
 val PoopColor = Color(0xFFA0522D)              // Brown for poop
 val MixedColor = Color(0xFFCD853F)             // Mixed
+val SpitUpColor = Color(0xFF9C6DD8)            // Purple for spit-up
+val SpitUpColorLight = Color(0xFFE8D5FA)
 
 // Background & Surface
 val BackgroundColor = Color(0xFFFAF8F5)        // Warm off-white

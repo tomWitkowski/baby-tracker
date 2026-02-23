@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.babytracker.data.db.entity.BabyEvent
 import com.babytracker.data.db.entity.DiaperSubType
 import com.babytracker.data.db.entity.FeedingSubType
+import com.babytracker.data.preferences.AppPreferences
 import com.babytracker.data.repository.EventRepository
 import com.babytracker.data.sync.SyncManager
 import com.babytracker.data.sync.SyncState
@@ -18,13 +19,16 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: EventRepository,
-    private val syncManager: SyncManager
+    private val syncManager: SyncManager,
+    private val appPreferences: AppPreferences
 ) : ViewModel() {
 
     val recentEvents: StateFlow<List<BabyEvent>> = repository.getRecentEvents()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val syncState: StateFlow<SyncState> = syncManager.syncState
+
+    val babyName: StateFlow<String> = appPreferences.babyName
 
     init {
         syncManager.start()
@@ -42,15 +46,21 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun logPump(milliliters: Int?) {
+    fun logPump(subType: FeedingSubType, milliliters: Int? = null) {
         viewModelScope.launch {
-            repository.logFeeding(FeedingSubType.PUMP, milliliters)
+            repository.logFeeding(subType, milliliters)
         }
     }
 
     fun logDiaper(subType: DiaperSubType) {
         viewModelScope.launch {
             repository.logDiaper(subType)
+        }
+    }
+
+    fun logSpitUp() {
+        viewModelScope.launch {
+            repository.logSpitUp()
         }
     }
 

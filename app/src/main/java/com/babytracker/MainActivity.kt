@@ -4,21 +4,22 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
-import androidx.navigation.compose.rememberNavController
+import com.babytracker.data.preferences.AppPreferences
 import com.babytracker.ui.navigation.AppNavigation
 import com.babytracker.ui.theme.BabyTrackerTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var appPreferences: AppPreferences
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             BabyTrackerTheme {
-                AppNavigation()
+                AppNavigation(startOnboarding = appPreferences.isFirstLaunch)
             }
         }
     }

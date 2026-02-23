@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 import java.util.UUID
 
 enum class EventType {
-    FEEDING, DIAPER
+    FEEDING, DIAPER, SPIT_UP
 }
 
 enum class FeedingSubType {
@@ -15,7 +15,11 @@ enum class FeedingSubType {
     BREAST_RIGHT,      // prawa pierś
     BREAST_BOTH_LR,    // lewa+prawa
     BREAST_BOTH_RL,    // prawa+lewa
-    PUMP,              // laktator
+    PUMP,              // laktator — legacy (nieznana strona)
+    PUMP_LEFT,         // laktator, lewa
+    PUMP_RIGHT,        // laktator, prawa
+    PUMP_BOTH_LR,      // laktator, lewa+prawa
+    PUMP_BOTH_RL,      // laktator, prawa+lewa
     NATURAL            // legacy — zachowane dla kompatybilności ze starymi wpisami
 }
 

@@ -40,8 +40,14 @@ interface BabyEventDao {
     @Query("SELECT COUNT(*) FROM baby_events WHERE eventType = :eventType AND (subType LIKE 'BREAST%' OR subType = 'NATURAL') AND timestamp BETWEEN :startOfDay AND :endOfDay")
     suspend fun countBreastFeedings(eventType: String, startOfDay: Long, endOfDay: Long): Int
 
-    @Query("SELECT SUM(milliliters) FROM baby_events WHERE eventType = 'FEEDING' AND subType = 'PUMP' AND milliliters IS NOT NULL AND timestamp BETWEEN :startOfDay AND :endOfDay")
+    @Query("SELECT COUNT(*) FROM baby_events WHERE eventType = 'FEEDING' AND subType LIKE 'PUMP%' AND timestamp BETWEEN :startOfDay AND :endOfDay")
+    suspend fun countPumpFeedings(startOfDay: Long, endOfDay: Long): Int
+
+    @Query("SELECT SUM(milliliters) FROM baby_events WHERE eventType = 'FEEDING' AND subType LIKE 'PUMP%' AND milliliters IS NOT NULL AND timestamp BETWEEN :startOfDay AND :endOfDay")
     suspend fun totalPumpMlForDay(startOfDay: Long, endOfDay: Long): Int?
+
+    @Query("SELECT COUNT(*) FROM baby_events WHERE eventType = 'SPIT_UP' AND timestamp BETWEEN :startOfDay AND :endOfDay")
+    suspend fun countSpitUpEvents(startOfDay: Long, endOfDay: Long): Int
 
     @Query("SELECT * FROM baby_events ORDER BY timestamp DESC")
     suspend fun getAllEventsSync(): List<BabyEvent>
