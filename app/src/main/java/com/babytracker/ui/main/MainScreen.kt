@@ -25,6 +25,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.WifiOff
+import com.babytracker.data.sync.SyncState
 import com.babytracker.ui.components.EditEventSheet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -68,11 +71,21 @@ fun MainScreen(
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val recentEvents by viewModel.recentEvents.collectAsState()
+    val syncState by viewModel.syncState.collectAsState()
     var bottomSheetState by remember { mutableStateOf<BottomSheetState>(BottomSheetState.Hidden) }
     var mlInput by remember { mutableStateOf("") }
     var pumpMlInput by remember { mutableStateOf("") }
     var showSuccessBadge by remember { mutableStateOf<String?>(null) }
     val haptic = LocalHapticFeedback.current
+
+    LaunchedEffect(syncState) {
+        when (val s = syncState) {
+            is SyncState.Success -> showSuccessBadge = if (s.added > 0) "Zsync +${s.added}" else "Już zsynchronizowano"
+            is SyncState.NoDeviceFound -> showSuccessBadge = "Nie znaleziono telefonu"
+            is SyncState.Error -> showSuccessBadge = "Błąd synchronizacji"
+            else -> {}
+        }
+    }
 
     LaunchedEffect(showSuccessBadge) {
         if (showSuccessBadge != null) {
@@ -113,21 +126,61 @@ fun MainScreen(
                         color = TextSecondary
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .shadow(2.dp, CircleShape)
-                        .clip(CircleShape)
-                        .background(SurfaceColor)
-                        .clickable { onNavigateToDashboard() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.BarChart,
-                        contentDescription = "Dashboard",
-                        tint = TextPrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Sync button
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .shadow(2.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(SurfaceColor)
+                            .clickable {
+                                if (syncState is SyncState.Idle || syncState is SyncState.NoDeviceFound || syncState is SyncState.Error) {
+                                    viewModel.syncNow()
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        when (syncState) {
+                            is SyncState.Searching, is SyncState.Syncing ->
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = TextSecondary
+                                )
+                            is SyncState.NoDeviceFound, is SyncState.Error ->
+                                Icon(
+                                    imageVector = Icons.Default.WifiOff,
+                                    contentDescription = "Sync",
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            else ->
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = "Synchronizuj",
+                                    tint = TextPrimary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                        }
+                    }
+                    // Dashboard button
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .shadow(2.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(SurfaceColor)
+                            .clickable { onNavigateToDashboard() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BarChart,
+                            contentDescription = "Dashboard",
+                            tint = TextPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
 

@@ -48,4 +48,7 @@ interface BabyEventDao {
 
     @Query("DELETE FROM baby_events WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertEventIgnore(event: BabyEvent): Long
 }

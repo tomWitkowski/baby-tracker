@@ -3,6 +3,7 @@ package com.babytracker.di
 import android.content.Context
 import androidx.room.Room
 import com.babytracker.data.db.BabyDatabase
+import com.babytracker.data.db.MIGRATION_1_2
 import com.babytracker.data.db.dao.BabyEventDao
 import dagger.Module
 import dagger.Provides
@@ -22,7 +23,7 @@ object AppModule {
             context,
             BabyDatabase::class.java,
             "baby_tracker_db"
-        ).build()
+        ).addMigrations(MIGRATION_1_2).build()
     }
 
     @Provides

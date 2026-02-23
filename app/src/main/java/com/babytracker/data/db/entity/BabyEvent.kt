@@ -1,7 +1,9 @@
 package com.babytracker.data.db.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.util.UUID
 
 enum class EventType {
     FEEDING, DIAPER
@@ -21,9 +23,13 @@ enum class DiaperSubType {
     PEE, POOP, MIXED
 }
 
-@Entity(tableName = "baby_events")
+@Entity(
+    tableName = "baby_events",
+    indices = [Index(value = ["syncId"], unique = true)]
+)
 data class BabyEvent(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val syncId: String = UUID.randomUUID().toString(),
     val eventType: String,      // EventType name
     val subType: String,        // FeedingSubType or DiaperSubType name
     val timestamp: Long = System.currentTimeMillis(),
