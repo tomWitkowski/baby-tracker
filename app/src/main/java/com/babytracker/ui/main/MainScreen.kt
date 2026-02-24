@@ -302,7 +302,7 @@ fun MainScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().weight(1f)
                 ) {
                     items(recentEvents, key = { it.id }) { event ->
                         EventRow(
@@ -361,7 +361,12 @@ fun MainScreen(
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() }
-                    ) { bottomSheetState = BottomSheetState.Hidden }
+                    ) {
+                        // Don't close via overlay when editing — user must use Cancel or Save
+                        if (bottomSheetState !is BottomSheetState.Editing) {
+                            bottomSheetState = BottomSheetState.Hidden
+                        }
+                    }
             )
         }
 

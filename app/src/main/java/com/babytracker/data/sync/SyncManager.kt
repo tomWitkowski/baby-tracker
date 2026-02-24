@@ -6,6 +6,9 @@ import android.net.nsd.NsdServiceInfo
 import android.util.Log
 import com.babytracker.data.db.dao.BabyEventDao
 import com.babytracker.data.db.dao.SyncTombstoneDao
+import com.babytracker.data.db.entity.DiaperSubType
+import com.babytracker.data.db.entity.EventType
+import com.babytracker.data.db.entity.FeedingSubType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,8 +20,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStreamReader
 import java.io.PrintWriter
+import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.UUID
@@ -46,6 +51,24 @@ class SyncManager @Inject constructor(
         private const val PORT = 47654
         private const val DISCOVERY_TIMEOUT_MS = 8000L
         private const val RESULT_DISPLAY_MS = 3000L
+
+        // Socket timeouts
+        private const val SOCKET_CONNECT_TIMEOUT_MS = 5_000
+        private const val SOCKET_SO_TIMEOUT_MS = 10_000
+        private const val SYNC_TOTAL_TIMEOUT_MS = 25_000L
+
+        // Security limits — prevent OOM and bulk-deletion attacks
+        private const val MAX_JSON_BYTES = 5 * 1024 * 1024        // 5 MB
+        private const val MAX_EVENTS_PER_SYNC = 5_000
+        private const val MAX_TOMBSTONES_PER_SYNC = 5_000
+        private const val MAX_NOTE_LENGTH = 1_000
+
+        // Valid enum values for input validation
+        private val VALID_EVENT_TYPES = EventType.entries.map { it.name }.toSet()
+        private val VALID_SUB_TYPES =
+            FeedingSubType.entries.map { it.name }.toSet() +
+            DiaperSubType.entries.map { it.name }.toSet() +
+            setOf(EventType.SPIT_UP.name)
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -99,12 +122,21 @@ class SyncManager @Inject constructor(
 
     private suspend fun handleIncomingConnection(socket: Socket) {
         try {
+            socket.soTimeout = SOCKET_SO_TIMEOUT_MS
             socket.use {
                 val reader = BufferedReader(InputStreamReader(it.inputStream))
                 val writer = PrintWriter(it.outputStream, true)
 
-                val json = reader.readLine() ?: return
+                val json = readLimitedLine(reader) ?: return
                 val received = SyncMessage.fromJson(json)
+
+                // Validate limits before processing to prevent bulk-deletion attacks
+                if (received.events.size > MAX_EVENTS_PER_SYNC ||
+                    received.tombstones.size > MAX_TOMBSTONES_PER_SYNC) {
+                    Log.w(TAG, "Server: rejected oversized sync from ${received.deviceId}")
+                    return
+                }
+
                 Log.d(TAG, "Server: received ${received.events.size} events, ${received.tombstones.size} tombstones from ${received.deviceId}")
 
                 // Merge their data, then send back our current state (post-merge)
@@ -213,24 +245,44 @@ class SyncManager @Inject constructor(
 
         _syncState.value = SyncState.Syncing
 
+        // socket.soTimeout is the primary hang-prevention mechanism.
+        // withTimeoutOrNull is a last-resort safety net for the overall flow.
         try {
-            val changes = withContext(Dispatchers.IO) {
-                Socket(host, discoveredPort).use { socket ->
-                    val reader = BufferedReader(InputStreamReader(socket.inputStream))
-                    val writer = PrintWriter(socket.outputStream, true)
+            val changes = withTimeoutOrNull(SYNC_TOTAL_TIMEOUT_MS) {
+                withContext(Dispatchers.IO) {
+                    val socket = Socket()
+                    socket.soTimeout = SOCKET_SO_TIMEOUT_MS
+                    socket.connect(InetSocketAddress(host, discoveredPort), SOCKET_CONNECT_TIMEOUT_MS)
+                    socket.use { s ->
+                        val reader = BufferedReader(InputStreamReader(s.inputStream))
+                        val writer = PrintWriter(s.outputStream, true)
 
-                    val ourEvents = dao.getAllEventsSync()
-                    val ourTombstones = tombstoneDao.getAllTombstones()
-                    writer.println(SyncMessage(deviceId, ourEvents, ourTombstones).toJson())
+                        val ourEvents = dao.getAllEventsSync()
+                        val ourTombstones = tombstoneDao.getAllTombstones()
+                        writer.println(SyncMessage(deviceId, ourEvents, ourTombstones).toJson())
 
-                    val json = reader.readLine() ?: return@use 0
-                    val received = SyncMessage.fromJson(json)
-                    Log.d(TAG, "Client: received ${received.events.size} events, ${received.tombstones.size} tombstones")
+                        val json = readLimitedLine(reader) ?: return@use 0
+                        val received = SyncMessage.fromJson(json)
 
-                    mergeReceivedData(received)
+                        // Validate limits
+                        if (received.events.size > MAX_EVENTS_PER_SYNC ||
+                            received.tombstones.size > MAX_TOMBSTONES_PER_SYNC) {
+                            Log.w(TAG, "Client: rejected oversized sync response")
+                            return@use 0
+                        }
+
+                        Log.d(TAG, "Client: received ${received.events.size} events, ${received.tombstones.size} tombstones")
+                        mergeReceivedData(received)
+                    }
                 }
             }
-            _syncState.value = SyncState.Success(changes)
+
+            if (changes == null) {
+                Log.w(TAG, "Sync timed out after ${SYNC_TOTAL_TIMEOUT_MS}ms")
+                _syncState.value = SyncState.Error("Przekroczono limit czasu synchronizacji")
+            } else {
+                _syncState.value = SyncState.Success(changes)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Sync error: ${e.message}")
             _syncState.value = SyncState.Error(e.message ?: "Błąd połączenia")
@@ -246,10 +298,20 @@ class SyncManager @Inject constructor(
 
     /**
      * Merges received data into local DB.
+     *
      * Rules:
      * 1. Tombstones (deletions) are applied first — deletion always wins.
+     *    This ensures that a deletion on one device propagates to the other,
+     *    even if the other device was offline when the deletion happened.
+     *
      * 2. For events: insert if new, update if the received version is newer (updatedAt).
      *    Skip if the event is locally tombstoned (we deleted it).
+     *    This "last write wins" strategy means offline edits are preserved as long as
+     *    the device clock is roughly accurate relative to the partner device.
+     *
+     * Offline scenario guarantee: events added offline on either device will be
+     * inserted on the other device during the next sync. No offline data is lost
+     * unless one device explicitly deleted it (tombstone).
      *
      * Returns count of local DB rows changed.
      */
@@ -263,18 +325,29 @@ class SyncManager @Inject constructor(
             if (deleted > 0) changes++
         }
 
-        // Step 2: apply events (skip if we tombstoned them locally)
+        // Step 2: apply events (skip tombstoned, validate before inserting)
         received.events.forEach { event ->
+            if (!isValidEvent(event)) {
+                Log.w(TAG, "Skipping invalid event: type=${event.eventType} sub=${event.subType}")
+                return@forEach
+            }
             if (tombstoneDao.countBySyncId(event.syncId) > 0) return@forEach
 
-            val existing = dao.getEventBySyncId(event.syncId)
+            // Sanitize note length before persisting
+            val safeEvent = if (event.note != null && event.note.length > MAX_NOTE_LENGTH) {
+                event.copy(note = event.note.take(MAX_NOTE_LENGTH))
+            } else {
+                event
+            }
+
+            val existing = dao.getEventBySyncId(safeEvent.syncId)
             when {
                 existing == null -> {
-                    val result = dao.insertEventIgnore(event.copy(id = 0))
+                    val result = dao.insertEventIgnore(safeEvent.copy(id = 0))
                     if (result != -1L) changes++
                 }
-                event.updatedAt > existing.updatedAt -> {
-                    dao.updateEvent(event.copy(id = existing.id))
+                safeEvent.updatedAt > existing.updatedAt -> {
+                    dao.updateEvent(safeEvent.copy(id = existing.id))
                     changes++
                 }
                 // else: our version is equal or newer — keep it
@@ -282,5 +355,39 @@ class SyncManager @Inject constructor(
         }
 
         return changes
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Reads a single line from [reader] but aborts if the payload exceeds [maxBytes].
+     * This prevents OOM attacks from a malformed device sending an unbounded stream.
+     */
+    @Throws(IOException::class)
+    private fun readLimitedLine(reader: BufferedReader, maxBytes: Int = MAX_JSON_BYTES): String? {
+        val sb = StringBuilder()
+        var count = 0
+        var ch: Int
+        while (reader.read().also { ch = it } != -1) {
+            if (ch == '\n'.code) break
+            sb.append(ch.toChar())
+            count++
+            if (count > maxBytes) throw IOException("Sync payload too large (>${maxBytes}B)")
+        }
+        return if (sb.isEmpty() && ch == -1) null else sb.toString()
+    }
+
+    /**
+     * Returns true only if the event carries known enum values.
+     * Rejects events with unknown types to prevent crashes in the rest of the app
+     * (e.g. EventType.valueOf() would throw on an unknown string).
+     */
+    private fun isValidEvent(event: com.babytracker.data.db.entity.BabyEvent): Boolean {
+        if (event.eventType !in VALID_EVENT_TYPES) return false
+        if (event.subType !in VALID_SUB_TYPES) return false
+        if (event.milliliters != null && (event.milliliters < 0 || event.milliliters > 9999)) return false
+        return true
     }
 }
