@@ -23,7 +23,7 @@ class MainViewModel @Inject constructor(
     private val appPreferences: AppPreferences
 ) : ViewModel() {
 
-    val recentEvents: StateFlow<List<BabyEvent>> = repository.getRecentEvents()
+    val recentEvents: StateFlow<List<BabyEvent>> = repository.getAllEvents()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val syncState: StateFlow<SyncState> = syncManager.syncState
