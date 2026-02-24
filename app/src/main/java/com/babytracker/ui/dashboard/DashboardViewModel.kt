@@ -1,6 +1,5 @@
 package com.babytracker.ui.dashboard
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.babytracker.data.db.entity.BabyEvent
@@ -43,7 +42,6 @@ class DashboardViewModel @Inject constructor(
     private val _selectedWeekStart = MutableStateFlow(currentWeekStart())
     val selectedWeekStart: StateFlow<Long> = _selectedWeekStart.asStateFlow()
 
-    // Reacts to both week changes and any database change
     val weeklyStats: StateFlow<List<DayStats>?> = combine(
         _selectedWeekStart,
         repository.getAllEvents()
@@ -65,57 +63,36 @@ class DashboardViewModel @Inject constructor(
 
     // ── Day navigation ────────────────────────────────────────────────────────
 
-    fun selectDate(timestamp: Long) {
-        _selectedDate.value = timestamp
-    }
+    fun selectDate(timestamp: Long) { _selectedDate.value = timestamp }
 
-    fun goToPreviousDay() {
-        _selectedDate.value = _selectedDate.value - 86_400_000L
-    }
+    fun goToPreviousDay() { _selectedDate.value = _selectedDate.value - 86_400_000L }
 
     fun goToNextDay() {
         val next = _selectedDate.value + 86_400_000L
-        if (next <= todayMidnight()) {
-            _selectedDate.value = next
-        }
+        if (next <= todayMidnight()) _selectedDate.value = next
     }
 
     fun isToday(): Boolean = _selectedDate.value == todayMidnight()
 
     // ── Week navigation ───────────────────────────────────────────────────────
 
-    fun setViewMode(mode: DashboardViewMode) {
-        _viewMode.value = mode
-    }
+    fun setViewMode(mode: DashboardViewMode) { _viewMode.value = mode }
 
-    fun goToPreviousWeek() {
-        _selectedWeekStart.value -= 7 * 86_400_000L
-    }
+    fun goToPreviousWeek() { _selectedWeekStart.value -= 7 * 86_400_000L }
 
     fun goToNextWeek() {
         val next = _selectedWeekStart.value + 7 * 86_400_000L
-        if (next <= currentWeekStart()) {
-            _selectedWeekStart.value = next
-        }
+        if (next <= currentWeekStart()) _selectedWeekStart.value = next
     }
 
     fun isCurrentWeek(): Boolean = _selectedWeekStart.value == currentWeekStart()
 
     // ── Event operations ──────────────────────────────────────────────────────
 
-    fun deleteEvent(event: BabyEvent) {
-        viewModelScope.launch {
-            repository.deleteEvent(event)
-        }
-    }
+    fun deleteEvent(event: BabyEvent) { viewModelScope.launch { repository.deleteEvent(event) } }
+    fun updateEvent(event: BabyEvent) { viewModelScope.launch { repository.updateEvent(event) } }
 
-    fun updateEvent(event: BabyEvent) {
-        viewModelScope.launch {
-            repository.updateEvent(event)
-        }
-    }
-
-    suspend fun exportToCsv(context: Context): String {
+    suspend fun exportToCsv(): String {
         val events = repository.getAllEventsForExport()
         val sb = StringBuilder()
         sb.appendLine("Data i godzina,Typ,Podtyp,Mililitry,Notatka")
@@ -125,6 +102,7 @@ class DashboardViewModel @Inject constructor(
             val type = when (event.eventType) {
                 EventType.FEEDING.name -> "Karmienie"
                 EventType.DIAPER.name -> "Pieluszka"
+                EventType.SPIT_UP.name -> "Zwrócenie"
                 else -> event.eventType
             }
             val subType = when (event.subType) {
@@ -134,10 +112,15 @@ class DashboardViewModel @Inject constructor(
                 FeedingSubType.BREAST_BOTH_LR.name -> "Lewa+Prawa"
                 FeedingSubType.BREAST_BOTH_RL.name -> "Prawa+Lewa"
                 FeedingSubType.PUMP.name -> "Laktator"
+                FeedingSubType.PUMP_LEFT.name -> "Laktator lewa"
+                FeedingSubType.PUMP_RIGHT.name -> "Laktator prawa"
+                FeedingSubType.PUMP_BOTH_LR.name -> "Laktator L+P"
+                FeedingSubType.PUMP_BOTH_RL.name -> "Laktator P+L"
                 FeedingSubType.NATURAL.name -> "Karmienie piersią"
                 DiaperSubType.PEE.name -> "Siku"
                 DiaperSubType.POOP.name -> "Kupka"
                 DiaperSubType.MIXED.name -> "Mieszane"
+                EventType.SPIT_UP.name -> "Zwrócenie"
                 else -> event.subType
             }
             sb.appendLine("$time,$type,$subType,${event.milliliters ?: ""},${event.note ?: ""}")
@@ -149,19 +132,15 @@ class DashboardViewModel @Inject constructor(
 
     private fun todayMidnight(): Long {
         val cal = Calendar.getInstance()
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
+        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
         return cal.timeInMillis
     }
 
     private fun currentWeekStart(): Long {
         val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
             val dayOfWeek = get(Calendar.DAY_OF_WEEK)
             val daysToMonday = (dayOfWeek - Calendar.MONDAY + 7) % 7
             add(Calendar.DAY_OF_MONTH, -daysToMonday)

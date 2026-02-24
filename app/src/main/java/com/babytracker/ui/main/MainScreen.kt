@@ -25,7 +25,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import com.babytracker.ui.components.EditEventSheet
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,6 +49,10 @@ import com.babytracker.data.db.entity.BabyEvent
 import com.babytracker.data.db.entity.DiaperSubType
 import com.babytracker.data.db.entity.EventType
 import com.babytracker.data.db.entity.FeedingSubType
+import com.babytracker.data.sync.SyncState
+import com.babytracker.ui.components.EditEventSheet
+import com.babytracker.ui.i18n.AppStrings
+import com.babytracker.ui.i18n.LocalStrings
 import com.babytracker.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -55,6 +61,7 @@ sealed class BottomSheetState {
     object Hidden : BottomSheetState()
     object FeedingOptions : BottomSheetState()
     object BreastSideOptions : BottomSheetState()
+    object PumpSideOptions : BottomSheetState()
     object DiaperOptions : BottomSheetState()
     object BottleMlInput : BottomSheetState()
     object PumpMlInput : BottomSheetState()
@@ -65,14 +72,29 @@ sealed class BottomSheetState {
 @Composable
 fun MainScreen(
     onNavigateToDashboard: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     viewModel: MainViewModel = hiltViewModel()
 ) {
+    val strings = LocalStrings.current
     val recentEvents by viewModel.recentEvents.collectAsState()
+    val syncState by viewModel.syncState.collectAsState()
+    val babyName by viewModel.babyName.collectAsState()
     var bottomSheetState by remember { mutableStateOf<BottomSheetState>(BottomSheetState.Hidden) }
     var mlInput by remember { mutableStateOf("") }
     var pumpMlInput by remember { mutableStateOf("") }
+    var pumpSelectedSubType by remember { mutableStateOf(FeedingSubType.PUMP_LEFT) }
     var showSuccessBadge by remember { mutableStateOf<String?>(null) }
     val haptic = LocalHapticFeedback.current
+
+    LaunchedEffect(syncState) {
+        when (val s = syncState) {
+            is SyncState.Success -> showSuccessBadge =
+                if (s.added > 0) "${strings.syncSuccessPrefix}${s.added}" else strings.syncAlreadySynced
+            is SyncState.NoDeviceFound -> showSuccessBadge = strings.syncNoDevice
+            is SyncState.Error -> showSuccessBadge = strings.syncError
+            else -> {}
+        }
+    }
 
     LaunchedEffect(showSuccessBadge) {
         if (showSuccessBadge != null) {
@@ -102,32 +124,89 @@ fun MainScreen(
             ) {
                 Column {
                     Text(
-                        text = "Dziecko",
+                        text = babyName.ifEmpty { strings.defaultBabyTitle },
                         style = MaterialTheme.typography.headlineMedium,
                         color = TextPrimary,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = getTodayString(),
+                        text = getTodayString(strings.locale),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .shadow(2.dp, CircleShape)
-                        .clip(CircleShape)
-                        .background(SurfaceColor)
-                        .clickable { onNavigateToDashboard() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.BarChart,
-                        contentDescription = "Dashboard",
-                        tint = TextPrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Sync button
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .shadow(2.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(SurfaceColor)
+                            .clickable {
+                                if (syncState is SyncState.Idle || syncState is SyncState.NoDeviceFound || syncState is SyncState.Error) {
+                                    viewModel.syncNow()
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        when (syncState) {
+                            is SyncState.Searching, is SyncState.Syncing ->
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = TextSecondary
+                                )
+                            is SyncState.NoDeviceFound, is SyncState.Error ->
+                                Icon(
+                                    imageVector = Icons.Default.WifiOff,
+                                    contentDescription = strings.syncButton,
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            else ->
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = strings.syncButton,
+                                    tint = TextPrimary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                        }
+                    }
+                    // Settings button
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .shadow(2.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(SurfaceColor)
+                            .clickable { onNavigateToSettings() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = strings.settings,
+                            tint = TextPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    // Dashboard button
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .shadow(2.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(SurfaceColor)
+                            .clickable { onNavigateToDashboard() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BarChart,
+                            contentDescription = strings.dashboard,
+                            tint = TextPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
 
@@ -140,13 +219,12 @@ fun MainScreen(
                     .padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Feeding button
                 ActionDot(
                     modifier = Modifier.weight(1f),
                     color = FeedingColor,
                     lightColor = FeedingColorLight,
                     emoji = "\uD83C\uDF7C",
-                    label = "Karmienie",
+                    label = strings.feeding,
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         bottomSheetState = BottomSheetState.FeedingOptions
@@ -157,14 +235,12 @@ fun MainScreen(
                         bottomSheetState = BottomSheetState.BottleMlInput
                     }
                 )
-
-                // Diaper button
                 ActionDot(
                     modifier = Modifier.weight(1f),
                     color = DiaperColor,
                     lightColor = DiaperColorLight,
                     emoji = "\uD83D\uDCCD",
-                    label = "Pieluszka",
+                    label = strings.diaper,
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         bottomSheetState = BottomSheetState.DiaperOptions
@@ -172,31 +248,58 @@ fun MainScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Spit-up quick button
+            Surface(
+                onClick = {
+                    viewModel.logSpitUp()
+                    showSuccessBadge = strings.spitUpSaved
+                },
+                shape = RoundedCornerShape(20.dp),
+                color = SpitUpColor.copy(alpha = 0.10f),
+                tonalElevation = 0.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text("\u21A9\uFE0F", fontSize = 20.sp)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        strings.spitUp,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = SpitUpColor
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Hint text
             Text(
-                text = "Przytrzymaj butelkę aby wpisać ml",
+                text = strings.holdForMl,
                 style = MaterialTheme.typography.labelSmall,
                 color = TextHint,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(36.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             // Recent events
             if (recentEvents.isNotEmpty()) {
                 Text(
-                    text = "Ostatnie zdarzenia",
+                    text = strings.recentActivity,
                     style = MaterialTheme.typography.titleMedium,
                     color = TextPrimary,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 Spacer(modifier = Modifier.height(12.dp))
-
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -204,6 +307,7 @@ fun MainScreen(
                     items(recentEvents, key = { it.id }) { event ->
                         EventRow(
                             event = event,
+                            strings = strings,
                             onDelete = { viewModel.deleteEvent(event) },
                             onEdit = { bottomSheetState = BottomSheetState.Editing(event) }
                         )
@@ -212,7 +316,7 @@ fun MainScreen(
             } else {
                 Spacer(modifier = Modifier.height(48.dp))
                 Text(
-                    text = "Dotknij przycisku,\naby zarejestrować zdarzenie",
+                    text = strings.noEventsHint,
                     style = MaterialTheme.typography.bodyLarge,
                     color = TextHint,
                     textAlign = TextAlign.Center,
@@ -244,7 +348,7 @@ fun MainScreen(
             }
         }
 
-        // Dimmed overlay + bottom sheet
+        // Dimmed overlay
         AnimatedVisibility(
             visible = bottomSheetState != BottomSheetState.Hidden,
             enter = fadeIn(),
@@ -261,6 +365,7 @@ fun MainScreen(
             )
         }
 
+        // Bottom sheet
         AnimatedVisibility(
             visible = bottomSheetState != BottomSheetState.Hidden,
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -273,11 +378,11 @@ fun MainScreen(
                 color = SurfaceColor,
                 tonalElevation = 4.dp
             ) {
-                when (bottomSheetState) {
+                when (val state = bottomSheetState) {
                     BottomSheetState.FeedingOptions -> FeedingSheet(
                         onBottle = {
                             viewModel.logBottleFeeding(null)
-                            showSuccessBadge = "Butelka zapisana ✓"
+                            showSuccessBadge = strings.bottleSaved
                             bottomSheetState = BottomSheetState.Hidden
                         },
                         onBottleWithMl = {
@@ -285,17 +390,22 @@ fun MainScreen(
                             bottomSheetState = BottomSheetState.BottleMlInput
                         },
                         onBreast = { bottomSheetState = BottomSheetState.BreastSideOptions },
-                        onPump = {
-                            pumpMlInput = ""
-                            bottomSheetState = BottomSheetState.PumpMlInput
-                        },
+                        onPump = { bottomSheetState = BottomSheetState.PumpSideOptions },
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden }
                     )
                     BottomSheetState.BreastSideOptions -> BreastSideSheet(
                         onSide = { subType ->
                             viewModel.logBreastFeeding(subType)
-                            showSuccessBadge = "Karmienie piersią zapisane ✓"
+                            showSuccessBadge = strings.breastSaved
                             bottomSheetState = BottomSheetState.Hidden
+                        },
+                        onDismiss = { bottomSheetState = BottomSheetState.Hidden }
+                    )
+                    BottomSheetState.PumpSideOptions -> PumpSideSheet(
+                        onSide = { subType ->
+                            pumpSelectedSubType = subType
+                            pumpMlInput = ""
+                            bottomSheetState = BottomSheetState.PumpMlInput
                         },
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden }
                     )
@@ -304,9 +414,10 @@ fun MainScreen(
                         onMlChange = { pumpMlInput = it },
                         onConfirm = {
                             val ml = pumpMlInput.toIntOrNull()
-                            viewModel.logPump(ml)
-                            val msg = if (ml != null) "Laktator ${ml}ml zapisany ✓" else "Laktator zapisany ✓"
-                            showSuccessBadge = msg
+                            viewModel.logPump(pumpSelectedSubType, ml)
+                            showSuccessBadge = if (ml != null)
+                                String.format(strings.pumpMlSavedFmt, ml)
+                            else strings.pumpSaved
                             bottomSheetState = BottomSheetState.Hidden
                         },
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden }
@@ -314,17 +425,17 @@ fun MainScreen(
                     BottomSheetState.DiaperOptions -> DiaperSheet(
                         onPee = {
                             viewModel.logDiaper(DiaperSubType.PEE)
-                            showSuccessBadge = "Siku zapisane ✓"
+                            showSuccessBadge = strings.peeSaved
                             bottomSheetState = BottomSheetState.Hidden
                         },
                         onPoop = {
                             viewModel.logDiaper(DiaperSubType.POOP)
-                            showSuccessBadge = "Kupka zapisana ✓"
+                            showSuccessBadge = strings.poopSaved
                             bottomSheetState = BottomSheetState.Hidden
                         },
                         onMixed = {
                             viewModel.logDiaper(DiaperSubType.MIXED)
-                            showSuccessBadge = "Mieszane zapisane ✓"
+                            showSuccessBadge = strings.mixedSaved
                             bottomSheetState = BottomSheetState.Hidden
                         },
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden }
@@ -335,14 +446,15 @@ fun MainScreen(
                         onConfirm = {
                             val ml = mlInput.toIntOrNull()
                             viewModel.logBottleFeeding(ml)
-                            val msg = if (ml != null) "Butelka ${ml}ml zapisana ✓" else "Butelka zapisana ✓"
-                            showSuccessBadge = msg
+                            showSuccessBadge = if (ml != null)
+                                String.format(strings.bottleMlSavedFmt, ml)
+                            else strings.bottleSaved
                             bottomSheetState = BottomSheetState.Hidden
                         },
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden }
                     )
                     is BottomSheetState.Editing -> EditEventSheet(
-                        event = (bottomSheetState as BottomSheetState.Editing).event,
+                        event = state.event,
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden },
                         onSave = { updatedEvent ->
                             viewModel.updateEvent(updatedEvent)
@@ -355,6 +467,8 @@ fun MainScreen(
         }
     }
 }
+
+// ── Action dot ────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -372,7 +486,6 @@ fun ActionDot(
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "scale"
     )
-
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -388,26 +501,13 @@ fun ActionDot(
                     spotColor = color.copy(alpha = 0.6f)
                 )
                 .clip(CircleShape)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(lightColor, color)
-                    )
-                )
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = onLongClick
-                ),
+                .background(brush = Brush.radialGradient(colors = listOf(lightColor, color)))
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = emoji,
-                fontSize = 52.sp,
-                textAlign = TextAlign.Center
-            )
+            Text(text = emoji, fontSize = 52.sp, textAlign = TextAlign.Center)
         }
-
         Spacer(modifier = Modifier.height(10.dp))
-
         Text(
             text = label,
             style = MaterialTheme.typography.titleMedium,
@@ -417,6 +517,8 @@ fun ActionDot(
     }
 }
 
+// ── Feeding sheet ─────────────────────────────────────────────────────────────
+
 @Composable
 fun FeedingSheet(
     onBottle: () -> Unit,
@@ -425,6 +527,7 @@ fun FeedingSheet(
     onPump: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val strings = LocalStrings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -434,13 +537,12 @@ fun FeedingSheet(
         SheetHandle()
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "Karmienie",
+            strings.feeding,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
         Spacer(modifier = Modifier.height(24.dp))
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -448,23 +550,21 @@ fun FeedingSheet(
             OptionCard(
                 modifier = Modifier.weight(1f),
                 emoji = "\uD83C\uDF7C",
-                title = "Butelka",
-                subtitle = "Szybki zapis",
+                title = strings.bottle,
+                subtitle = strings.quickSave,
                 color = BottleColor,
                 onClick = onBottle
             )
             OptionCard(
                 modifier = Modifier.weight(1f),
                 emoji = "\uD83C\uDF7C",
-                title = "Butelka + ml",
-                subtitle = "Podaj ilość",
+                title = strings.bottleWithMl,
+                subtitle = strings.chooseSide,
                 color = BottleColor,
                 onClick = onBottleWithMl
             )
         }
-
         Spacer(modifier = Modifier.height(12.dp))
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -472,35 +572,36 @@ fun FeedingSheet(
             OptionCard(
                 modifier = Modifier.weight(1f),
                 emoji = "\uD83E\uDD31",
-                title = "Karmienie piersią",
-                subtitle = "Wybierz stronę",
+                title = strings.breastFeeding,
+                subtitle = strings.chooseSide,
                 color = NaturalColor,
                 onClick = onBreast
             )
             OptionCard(
                 modifier = Modifier.weight(1f),
                 emoji = "\uD83E\uDED7",
-                title = "Laktator",
-                subtitle = "Opcjonalne ml",
+                title = strings.pump,
+                subtitle = strings.chooseSide,
                 color = PumpColor,
                 onClick = onPump
             )
         }
-
         Spacer(modifier = Modifier.height(16.dp))
-
         TextButton(onClick = onDismiss) {
-            Text("Anuluj", color = TextSecondary)
+            Text(strings.cancel, color = TextSecondary)
         }
         Spacer(modifier = Modifier.height(8.dp))
     }
 }
+
+// ── Breast side sheet ─────────────────────────────────────────────────────────
 
 @Composable
 fun BreastSideSheet(
     onSide: (FeedingSubType) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val strings = LocalStrings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -510,67 +611,138 @@ fun BreastSideSheet(
         SheetHandle()
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "\uD83E\uDD31 Karmienie piersią",
+            "\uD83E\uDD31 ${strings.breastFeeding}",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
         Spacer(modifier = Modifier.height(24.dp))
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OptionCard(
                 modifier = Modifier.weight(1f),
-                emoji = "⬅\uFE0F",
-                title = "Lewa",
+                emoji = "\u2B05\uFE0F",
+                title = strings.breastLeft,
                 subtitle = "",
                 color = NaturalColor,
                 onClick = { onSide(FeedingSubType.BREAST_LEFT) }
             )
             OptionCard(
                 modifier = Modifier.weight(1f),
-                emoji = "➡\uFE0F",
-                title = "Prawa",
+                emoji = "\u27A1\uFE0F",
+                title = strings.breastRight,
                 subtitle = "",
                 color = NaturalColor,
                 onClick = { onSide(FeedingSubType.BREAST_RIGHT) }
             )
         }
-
         Spacer(modifier = Modifier.height(12.dp))
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OptionCard(
                 modifier = Modifier.weight(1f),
-                emoji = "↔\uFE0F",
-                title = "Lewa+Prawa",
-                subtitle = "Zaczęła od lewej",
+                emoji = "\u2194\uFE0F",
+                title = strings.breastBothLR,
+                subtitle = strings.startedLeft,
                 color = NaturalColor,
                 onClick = { onSide(FeedingSubType.BREAST_BOTH_LR) }
             )
             OptionCard(
                 modifier = Modifier.weight(1f),
-                emoji = "↔\uFE0F",
-                title = "Prawa+Lewa",
-                subtitle = "Zaczęła od prawej",
+                emoji = "\u2194\uFE0F",
+                title = strings.breastBothRL,
+                subtitle = strings.startedRight,
                 color = NaturalColor,
                 onClick = { onSide(FeedingSubType.BREAST_BOTH_RL) }
             )
         }
-
         Spacer(modifier = Modifier.height(16.dp))
-
         TextButton(onClick = onDismiss) {
-            Text("Anuluj", color = TextSecondary)
+            Text(strings.cancel, color = TextSecondary)
         }
         Spacer(modifier = Modifier.height(8.dp))
     }
 }
+
+// ── Pump side sheet ───────────────────────────────────────────────────────────
+
+@Composable
+fun PumpSideSheet(
+    onSide: (FeedingSubType) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val strings = LocalStrings.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        SheetHandle()
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            "\uD83E\uDED7 ${strings.pumpSideTitle}",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OptionCard(
+                modifier = Modifier.weight(1f),
+                emoji = "\u2B05\uFE0F",
+                title = strings.breastLeft,
+                subtitle = "",
+                color = PumpColor,
+                onClick = { onSide(FeedingSubType.PUMP_LEFT) }
+            )
+            OptionCard(
+                modifier = Modifier.weight(1f),
+                emoji = "\u27A1\uFE0F",
+                title = strings.breastRight,
+                subtitle = "",
+                color = PumpColor,
+                onClick = { onSide(FeedingSubType.PUMP_RIGHT) }
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OptionCard(
+                modifier = Modifier.weight(1f),
+                emoji = "\u2194\uFE0F",
+                title = strings.breastBothLR,
+                subtitle = strings.startedLeft,
+                color = PumpColor,
+                onClick = { onSide(FeedingSubType.PUMP_BOTH_LR) }
+            )
+            OptionCard(
+                modifier = Modifier.weight(1f),
+                emoji = "\u2194\uFE0F",
+                title = strings.breastBothRL,
+                subtitle = strings.startedRight,
+                color = PumpColor,
+                onClick = { onSide(FeedingSubType.PUMP_BOTH_RL) }
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        TextButton(onClick = onDismiss) {
+            Text(strings.cancel, color = TextSecondary)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+// ── Pump ml sheet ─────────────────────────────────────────────────────────────
 
 @Composable
 fun PumpMlSheet(
@@ -579,6 +751,7 @@ fun PumpMlSheet(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val strings = LocalStrings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -588,24 +761,19 @@ fun PumpMlSheet(
         SheetHandle()
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "\uD83E\uDED7 Laktator",
+            "\uD83E\uDED7 ${strings.pump}",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            "Ile mililitrów? (opcjonalne)",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary
-        )
+        Text(strings.howManyMl, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(modifier = Modifier.height(24.dp))
-
         OutlinedTextField(
             value = mlInput,
             onValueChange = { v -> if (v.length <= 4 && v.all { it.isDigit() }) onMlChange(v) },
-            label = { Text("Ilość") },
-            placeholder = { Text("np. 80") },
+            label = { Text(strings.amountLabel) },
+            placeholder = { Text(strings.exampleMlSmall) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -616,31 +784,28 @@ fun PumpMlSheet(
             ),
             suffix = { Text("ml", color = TextSecondary) }
         )
-
         Spacer(modifier = Modifier.height(24.dp))
-
         Button(
             onClick = onConfirm,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = PumpColor)
         ) {
             Text(
-                if (mlInput.isEmpty()) "Zapisz bez ilości" else "Zapisz ${mlInput}ml",
+                if (mlInput.isEmpty()) strings.saveWithoutAmount
+                else String.format(strings.saveMlFormat, mlInput.toInt()),
                 fontWeight = FontWeight.SemiBold
             )
         }
-
         Spacer(modifier = Modifier.height(8.dp))
-
         TextButton(onClick = onDismiss) {
-            Text("Anuluj", color = TextSecondary)
+            Text(strings.cancel, color = TextSecondary)
         }
         Spacer(modifier = Modifier.height(8.dp))
     }
 }
+
+// ── Diaper sheet ──────────────────────────────────────────────────────────────
 
 @Composable
 fun DiaperSheet(
@@ -649,6 +814,7 @@ fun DiaperSheet(
     onMixed: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val strings = LocalStrings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -658,13 +824,12 @@ fun DiaperSheet(
         SheetHandle()
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "Pieluszka",
+            strings.diaper,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
         Spacer(modifier = Modifier.height(24.dp))
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -672,40 +837,38 @@ fun DiaperSheet(
             OptionCard(
                 modifier = Modifier.weight(1f),
                 emoji = "\uD83D\uDFE1",
-                title = "Siku",
-                subtitle = "Mokra pieluszka",
+                title = strings.pee,
+                subtitle = strings.wetDiaper,
                 color = PeeColor,
                 onClick = onPee
             )
             OptionCard(
                 modifier = Modifier.weight(1f),
                 emoji = "\uD83D\uDFE4",
-                title = "Kupka",
+                title = strings.poop,
                 subtitle = "",
                 color = PoopColor,
                 onClick = onPoop
             )
         }
-
         Spacer(modifier = Modifier.height(12.dp))
-
         OptionCard(
             modifier = Modifier.fillMaxWidth(),
             emoji = "\uD83D\uDFE0",
-            title = "Mieszane",
-            subtitle = "Siku i kupka",
+            title = strings.mixed,
+            subtitle = strings.mixedDesc,
             color = MixedColor,
             onClick = onMixed
         )
-
         Spacer(modifier = Modifier.height(16.dp))
-
         TextButton(onClick = onDismiss) {
-            Text("Anuluj", color = TextSecondary)
+            Text(strings.cancel, color = TextSecondary)
         }
         Spacer(modifier = Modifier.height(8.dp))
     }
 }
+
+// ── Bottle ml sheet ───────────────────────────────────────────────────────────
 
 @Composable
 fun BottleMlSheet(
@@ -714,6 +877,7 @@ fun BottleMlSheet(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val strings = LocalStrings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -723,24 +887,19 @@ fun BottleMlSheet(
         SheetHandle()
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "\uD83C\uDF7C Butelka",
+            "\uD83C\uDF7C ${strings.bottle}",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            "Ile mililitrów? (opcjonalne)",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary
-        )
+        Text(strings.howManyMl, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(modifier = Modifier.height(24.dp))
-
         OutlinedTextField(
             value = mlInput,
             onValueChange = { v -> if (v.length <= 4 && v.all { it.isDigit() }) onMlChange(v) },
-            label = { Text("Ilość") },
-            placeholder = { Text("np. 120") },
+            label = { Text(strings.amountLabel) },
+            placeholder = { Text(strings.exampleMlLarge) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -751,31 +910,28 @@ fun BottleMlSheet(
             ),
             suffix = { Text("ml", color = TextSecondary) }
         )
-
         Spacer(modifier = Modifier.height(24.dp))
-
         Button(
             onClick = onConfirm,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = BottleColor)
         ) {
             Text(
-                if (mlInput.isEmpty()) "Zapisz bez ilości" else "Zapisz ${mlInput}ml",
+                if (mlInput.isEmpty()) strings.saveWithoutAmount
+                else String.format(strings.saveMlFormat, mlInput.toInt()),
                 fontWeight = FontWeight.SemiBold
             )
         }
-
         Spacer(modifier = Modifier.height(8.dp))
-
         TextButton(onClick = onDismiss) {
-            Text("Anuluj", color = TextSecondary)
+            Text(strings.cancel, color = TextSecondary)
         }
         Spacer(modifier = Modifier.height(8.dp))
     }
 }
+
+// ── Option card ───────────────────────────────────────────────────────────────
 
 @Composable
 fun OptionCard(
@@ -819,16 +975,18 @@ fun OptionCard(
     }
 }
 
+// ── Event row ─────────────────────────────────────────────────────────────────
+
 @Composable
 fun EventRow(
     event: BabyEvent,
+    strings: AppStrings,
     onDelete: () -> Unit,
     onEdit: () -> Unit = {}
 ) {
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val timeFormat = SimpleDateFormat("HH:mm", strings.locale)
     val time = timeFormat.format(Date(event.timestamp))
-
-    val (emoji, label, color) = eventDisplayInfo(event)
+    val (emoji, label, color) = eventDisplayInfo(event, strings)
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -866,24 +1024,18 @@ fun EventRow(
                     color = TextSecondary
                 )
             }
-            IconButton(
-                onClick = onEdit,
-                modifier = Modifier.size(36.dp)
-            ) {
+            IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
                 Icon(
                     Icons.Default.Edit,
-                    contentDescription = "Edytuj",
+                    contentDescription = null,
                     tint = TextHint,
                     modifier = Modifier.size(18.dp)
                 )
             }
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.size(36.dp)
-            ) {
+            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Usuń",
+                    contentDescription = null,
                     tint = TextHint,
                     modifier = Modifier.size(18.dp)
                 )
@@ -892,26 +1044,43 @@ fun EventRow(
     }
 }
 
-fun eventDisplayInfo(event: BabyEvent): Triple<String, String, androidx.compose.ui.graphics.Color> = when {
-    event.eventType == EventType.FEEDING.name -> when (event.subType) {
-        FeedingSubType.BOTTLE.name ->
-            Triple("\uD83C\uDF7C", "Butelka${event.milliliters?.let { " · ${it}ml" } ?: ""}", BottleColor)
-        FeedingSubType.BREAST_LEFT.name ->
-            Triple("\uD83E\uDD31", "Lewa pierś", NaturalColor)
-        FeedingSubType.BREAST_RIGHT.name ->
-            Triple("\uD83E\uDD31", "Prawa pierś", NaturalColor)
-        FeedingSubType.BREAST_BOTH_LR.name ->
-            Triple("\uD83E\uDD31", "Lewa\u2192Prawa", NaturalColor)
-        FeedingSubType.BREAST_BOTH_RL.name ->
-            Triple("\uD83E\uDD31", "Prawa\u2192Lewa", NaturalColor)
-        FeedingSubType.PUMP.name ->
-            Triple("\uD83E\uDED7", "Laktator${event.milliliters?.let { " · ${it}ml" } ?: ""}", PumpColor)
-        else -> Triple("\uD83E\uDD31", "Karmienie piersią", NaturalColor)  // NATURAL legacy
+// ── Event display info ────────────────────────────────────────────────────────
+
+fun eventDisplayInfo(event: BabyEvent, strings: AppStrings): Triple<String, String, Color> {
+    val mlSuffix = event.milliliters?.let { " · ${it}ml" } ?: ""
+    return when {
+        event.eventType == EventType.SPIT_UP.name ->
+            Triple("\u21A9\uFE0F", strings.spitUp, SpitUpColor)
+        event.eventType == EventType.FEEDING.name -> when (event.subType) {
+            FeedingSubType.BOTTLE.name ->
+                Triple("\uD83C\uDF7C", "${strings.bottle}$mlSuffix", BottleColor)
+            FeedingSubType.BREAST_LEFT.name ->
+                Triple("\uD83E\uDD31", strings.breastLeft, NaturalColor)
+            FeedingSubType.BREAST_RIGHT.name ->
+                Triple("\uD83E\uDD31", strings.breastRight, NaturalColor)
+            FeedingSubType.BREAST_BOTH_LR.name ->
+                Triple("\uD83E\uDD31", "${strings.breastLeft}\u2192${strings.breastRight}", NaturalColor)
+            FeedingSubType.BREAST_BOTH_RL.name ->
+                Triple("\uD83E\uDD31", "${strings.breastRight}\u2192${strings.breastLeft}", NaturalColor)
+            FeedingSubType.PUMP.name ->
+                Triple("\uD83E\uDED7", "${strings.pump}$mlSuffix", PumpColor)
+            FeedingSubType.PUMP_LEFT.name ->
+                Triple("\uD83E\uDED7", "${strings.pump} · ${strings.breastLeft}$mlSuffix", PumpColor)
+            FeedingSubType.PUMP_RIGHT.name ->
+                Triple("\uD83E\uDED7", "${strings.pump} · ${strings.breastRight}$mlSuffix", PumpColor)
+            FeedingSubType.PUMP_BOTH_LR.name ->
+                Triple("\uD83E\uDED7", "${strings.pump} · ${strings.breastLeft}\u2192${strings.breastRight}$mlSuffix", PumpColor)
+            FeedingSubType.PUMP_BOTH_RL.name ->
+                Triple("\uD83E\uDED7", "${strings.pump} · ${strings.breastRight}\u2192${strings.breastLeft}$mlSuffix", PumpColor)
+            else -> Triple("\uD83E\uDD31", strings.breastFeeding, NaturalColor)
+        }
+        event.subType == DiaperSubType.PEE.name -> Triple("\uD83D\uDFE1", strings.pee, PeeColor)
+        event.subType == DiaperSubType.POOP.name -> Triple("\uD83D\uDFE4", strings.poop, PoopColor)
+        else -> Triple("\uD83D\uDFE0", strings.mixed, MixedColor)
     }
-    event.subType == DiaperSubType.PEE.name -> Triple("\uD83D\uDFE1", "Siku", PeeColor)
-    event.subType == DiaperSubType.POOP.name -> Triple("\uD83D\uDFE4", "Kupka", PoopColor)
-    else -> Triple("\uD83D\uDFE0", "Mieszane", MixedColor)
 }
+
+// ── Sheet handle ──────────────────────────────────────────────────────────────
 
 @Composable
 fun SheetHandle() {
@@ -924,7 +1093,9 @@ fun SheetHandle() {
     )
 }
 
-fun getTodayString(): String {
-    val sdf = SimpleDateFormat("EEEE, d MMMM", Locale("pl"))
+// ── Date helper ───────────────────────────────────────────────────────────────
+
+fun getTodayString(locale: java.util.Locale): String {
+    val sdf = SimpleDateFormat("EEEE, d MMMM", locale)
     return sdf.format(Date()).replaceFirstChar { it.uppercase() }
 }
