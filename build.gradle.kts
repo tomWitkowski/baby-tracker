@@ -2,7 +2,7 @@
 // Note: alias() cannot be used here — the plugins block in the root build script is evaluated
 // before the version catalog is available. Explicit IDs and versions are used instead.
 plugins {
-    id("com.android.application") version "8.7.3" apply false
+    id("com.android.application") version "8.13.2" apply false
     id("org.jetbrains.kotlin.android") version "2.1.0" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.1.0" apply false
     id("com.google.dagger.hilt.android") version "2.54" apply false
