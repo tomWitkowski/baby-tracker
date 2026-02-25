@@ -25,6 +25,7 @@ class FeedingReminderScheduler @Inject constructor(
         if (delayMs <= 0) return
 
         val pendingIntent = buildPendingIntent(PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            ?: return
         alarmManager.cancel(pendingIntent)
         alarmManager.setWindow(
             AlarmManager.RTC_WAKEUP,
