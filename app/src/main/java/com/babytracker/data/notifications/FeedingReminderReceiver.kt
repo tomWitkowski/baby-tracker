@@ -19,8 +19,9 @@ class FeedingReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val strings = stringsForLang(prefs.language.value)
-        val hours = prefs.reminderDelayHours
-        val minutes = prefs.reminderDelayMinutes
+        val totalMinutes = prefs.reminderTotalMinutes
+        val hours = totalMinutes / 60
+        val minutes = totalMinutes % 60
         val body = String.format(strings.reminderNotifBody, hours, minutes)
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
