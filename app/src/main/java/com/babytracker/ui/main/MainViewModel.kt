@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.babytracker.data.db.entity.BabyEvent
 import com.babytracker.data.db.entity.DiaperSubType
 import com.babytracker.data.db.entity.FeedingSubType
+import com.babytracker.data.notifications.FeedingReminderScheduler
 import com.babytracker.data.preferences.AppPreferences
 import com.babytracker.data.repository.EventRepository
 import com.babytracker.data.sync.SyncManager
@@ -20,7 +21,8 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val repository: EventRepository,
     private val syncManager: SyncManager,
-    private val appPreferences: AppPreferences
+    private val appPreferences: AppPreferences,
+    private val reminderScheduler: FeedingReminderScheduler
 ) : ViewModel() {
 
     val recentEvents: StateFlow<List<BabyEvent>> = repository.getAllEvents()
@@ -30,25 +32,33 @@ class MainViewModel @Inject constructor(
 
     val babyName: StateFlow<String> = appPreferences.babyName
 
+    val showBottle get() = appPreferences.showBottle
+    val showBreast get() = appPreferences.showBreast
+    val showPump get() = appPreferences.showPump
+    val showSpitUp get() = appPreferences.showSpitUp
+
     init {
         syncManager.start()
     }
 
-    fun logBottleFeeding(milliliters: Int?) {
+    fun logBottleFeeding(subType: FeedingSubType = FeedingSubType.BOTTLE, milliliters: Int?) {
         viewModelScope.launch {
-            repository.logFeeding(FeedingSubType.BOTTLE, milliliters)
+            repository.logFeeding(subType, milliliters)
+            reminderScheduler.scheduleIfEnabled()
         }
     }
 
     fun logBreastFeeding(subType: FeedingSubType) {
         viewModelScope.launch {
             repository.logFeeding(subType)
+            reminderScheduler.scheduleIfEnabled()
         }
     }
 
     fun logPump(subType: FeedingSubType, milliliters: Int? = null) {
         viewModelScope.launch {
             repository.logFeeding(subType, milliliters)
+            reminderScheduler.scheduleIfEnabled()
         }
     }
 

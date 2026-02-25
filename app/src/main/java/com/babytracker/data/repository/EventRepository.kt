@@ -90,7 +90,7 @@ class EventRepository @Inject constructor(
     suspend fun getDayStats(dayTimestamp: Long): DayStats {
         val (start, end) = getDayBounds(dayTimestamp)
         val totalFeedings = dao.countEventsOfType(EventType.FEEDING.name, start, end)
-        val bottleFeedings = dao.countEventsOfSubType(EventType.FEEDING.name, FeedingSubType.BOTTLE.name, start, end)
+        val bottleFeedings = dao.countBottleFeedings(EventType.FEEDING.name, start, end)
         val breastFeedings = dao.countBreastFeedings(EventType.FEEDING.name, start, end)
         val pumpFeedings = dao.countPumpFeedings(start, end)
         val totalMl = dao.totalMlForDay(start, end) ?: 0

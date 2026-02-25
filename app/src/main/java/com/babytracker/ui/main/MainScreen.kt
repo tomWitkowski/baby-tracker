@@ -18,6 +18,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -63,7 +64,8 @@ sealed class BottomSheetState {
     object BreastSideOptions : BottomSheetState()
     object PumpSideOptions : BottomSheetState()
     object DiaperOptions : BottomSheetState()
-    object BottleMlInput : BottomSheetState()
+    object BottleTypeOptions : BottomSheetState()
+    data class BottleMlInput(val subType: FeedingSubType = FeedingSubType.BOTTLE) : BottomSheetState()
     object PumpMlInput : BottomSheetState()
     data class Editing(val event: BabyEvent) : BottomSheetState()
 }
@@ -85,6 +87,16 @@ fun MainScreen(
     var pumpSelectedSubType by remember { mutableStateOf(FeedingSubType.PUMP_LEFT) }
     var showSuccessBadge by remember { mutableStateOf<String?>(null) }
     val haptic = LocalHapticFeedback.current
+    val listState = rememberLazyListState()
+
+    // Scroll to top whenever a new event is added
+    val previousCount = remember { mutableIntStateOf(recentEvents.size) }
+    LaunchedEffect(recentEvents.size) {
+        if (recentEvents.size > previousCount.intValue) {
+            listState.animateScrollToItem(0)
+        }
+        previousCount.intValue = recentEvents.size
+    }
 
     LaunchedEffect(syncState) {
         when (val s = syncState) {
@@ -232,14 +244,14 @@ fun MainScreen(
                     onLongClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         mlInput = ""
-                        bottomSheetState = BottomSheetState.BottleMlInput
+                        bottomSheetState = BottomSheetState.BottleMlInput()
                     }
                 )
                 ActionDot(
                     modifier = Modifier.weight(1f),
                     color = DiaperColor,
                     lightColor = DiaperColorLight,
-                    emoji = "\uD83D\uDCCD",
+                    emoji = "\uD83E\uDDF7",
                     label = strings.diaper,
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -250,34 +262,35 @@ fun MainScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Spit-up quick button
-            Surface(
-                onClick = {
-                    viewModel.logSpitUp()
-                    showSuccessBadge = strings.spitUpSaved
-                },
-                shape = RoundedCornerShape(20.dp),
-                color = SpitUpColor.copy(alpha = 0.10f),
-                tonalElevation = 0.dp,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+            // Spit-up quick button (hidden if user disabled it in settings)
+            if (viewModel.showSpitUp) {
+                Surface(
+                    onClick = {
+                        viewModel.logSpitUp()
+                        showSuccessBadge = strings.spitUpSaved
+                    },
+                    shape = RoundedCornerShape(20.dp),
+                    color = SpitUpColor.copy(alpha = 0.10f),
+                    tonalElevation = 0.dp,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("\u21A9\uFE0F", fontSize = 20.sp)
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        strings.spitUp,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = SpitUpColor
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text("\u21A9\uFE0F", fontSize = 20.sp)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            strings.spitUp,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = SpitUpColor
+                        )
+                    }
                 }
+                Spacer(modifier = Modifier.height(8.dp))
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             // Hint text
             Text(
@@ -301,6 +314,7 @@ fun MainScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 LazyColumn(
+                    state = listState,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth().weight(1f)
                 ) {
@@ -385,17 +399,37 @@ fun MainScreen(
             ) {
                 when (val state = bottomSheetState) {
                     BottomSheetState.FeedingOptions -> FeedingSheet(
-                        onBottle = {
-                            viewModel.logBottleFeeding(null)
-                            showSuccessBadge = strings.bottleSaved
-                            bottomSheetState = BottomSheetState.Hidden
-                        },
+                        showBottle = viewModel.showBottle,
+                        showBreast = viewModel.showBreast,
+                        showPump = viewModel.showPump,
+                        onBottle = { bottomSheetState = BottomSheetState.BottleTypeOptions },
                         onBottleWithMl = {
                             mlInput = ""
-                            bottomSheetState = BottomSheetState.BottleMlInput
+                            bottomSheetState = BottomSheetState.BottleMlInput()
                         },
                         onBreast = { bottomSheetState = BottomSheetState.BreastSideOptions },
                         onPump = { bottomSheetState = BottomSheetState.PumpSideOptions },
+                        onDismiss = { bottomSheetState = BottomSheetState.Hidden }
+                    )
+                    BottomSheetState.BottleTypeOptions -> BottleTypeSheet(
+                        onFormula = {
+                            viewModel.logBottleFeeding(FeedingSubType.BOTTLE_FORMULA, null)
+                            showSuccessBadge = strings.formulaSaved
+                            bottomSheetState = BottomSheetState.Hidden
+                        },
+                        onFormulaWithMl = {
+                            mlInput = ""
+                            bottomSheetState = BottomSheetState.BottleMlInput(FeedingSubType.BOTTLE_FORMULA)
+                        },
+                        onExpressed = {
+                            viewModel.logBottleFeeding(FeedingSubType.BOTTLE_EXPRESSED, null)
+                            showSuccessBadge = strings.expressedSaved
+                            bottomSheetState = BottomSheetState.Hidden
+                        },
+                        onExpressedWithMl = {
+                            mlInput = ""
+                            bottomSheetState = BottomSheetState.BottleMlInput(FeedingSubType.BOTTLE_EXPRESSED)
+                        },
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden }
                     )
                     BottomSheetState.BreastSideOptions -> BreastSideSheet(
@@ -445,19 +479,24 @@ fun MainScreen(
                         },
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden }
                     )
-                    BottomSheetState.BottleMlInput -> BottleMlSheet(
-                        mlInput = mlInput,
-                        onMlChange = { mlInput = it },
-                        onConfirm = {
-                            val ml = mlInput.toIntOrNull()
-                            viewModel.logBottleFeeding(ml)
-                            showSuccessBadge = if (ml != null)
-                                String.format(strings.bottleMlSavedFmt, ml)
-                            else strings.bottleSaved
-                            bottomSheetState = BottomSheetState.Hidden
-                        },
-                        onDismiss = { bottomSheetState = BottomSheetState.Hidden }
-                    )
+                    is BottomSheetState.BottleMlInput -> {
+                        val bottleSubType = (bottomSheetState as BottomSheetState.BottleMlInput).subType
+                        BottleMlSheet(
+                            mlInput = mlInput,
+                            onMlChange = { mlInput = it },
+                            onConfirm = {
+                                val ml = mlInput.toIntOrNull()
+                                viewModel.logBottleFeeding(bottleSubType, ml)
+                                showSuccessBadge = when (bottleSubType) {
+                                    FeedingSubType.BOTTLE_FORMULA -> if (ml != null) String.format(strings.formulaMlSavedFmt, ml) else strings.formulaSaved
+                                    FeedingSubType.BOTTLE_EXPRESSED -> if (ml != null) String.format(strings.expressedMlSavedFmt, ml) else strings.expressedSaved
+                                    else -> if (ml != null) String.format(strings.bottleMlSavedFmt, ml) else strings.bottleSaved
+                                }
+                                bottomSheetState = BottomSheetState.Hidden
+                            },
+                            onDismiss = { bottomSheetState = BottomSheetState.Hidden }
+                        )
+                    }
                     is BottomSheetState.Editing -> EditEventSheet(
                         event = state.event,
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden },
@@ -526,6 +565,9 @@ fun ActionDot(
 
 @Composable
 fun FeedingSheet(
+    showBottle: Boolean = true,
+    showBreast: Boolean = true,
+    showPump: Boolean = true,
     onBottle: () -> Unit,
     onBottleWithMl: () -> Unit,
     onBreast: () -> Unit,
@@ -548,47 +590,124 @@ fun FeedingSheet(
             color = TextPrimary
         )
         Spacer(modifier = Modifier.height(24.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        if (showBottle) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OptionCard(
+                    modifier = Modifier.weight(1f),
+                    emoji = "\uD83C\uDF7C",
+                    title = strings.bottle,
+                    subtitle = strings.quickSave,
+                    color = BottleColor,
+                    onClick = onBottle
+                )
+                OptionCard(
+                    modifier = Modifier.weight(1f),
+                    emoji = "\uD83C\uDF7C",
+                    title = strings.bottleWithMl,
+                    subtitle = strings.chooseSide,
+                    color = BottleColor,
+                    onClick = onBottleWithMl
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        if (showBreast || showPump) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (showBreast) {
+                    OptionCard(
+                        modifier = Modifier.weight(1f),
+                        emoji = "\uD83E\uDD31",
+                        title = strings.breastFeeding,
+                        subtitle = strings.chooseSide,
+                        color = NaturalColor,
+                        onClick = onBreast
+                    )
+                }
+                if (showPump) {
+                    OptionCard(
+                        modifier = Modifier.weight(1f),
+                        emoji = "\uD83E\uDED7",
+                        title = strings.pump,
+                        subtitle = strings.chooseSide,
+                        color = PumpColor,
+                        onClick = onPump
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        TextButton(onClick = onDismiss) {
+            Text(strings.cancel, color = TextSecondary)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+// ── Bottle type sheet ─────────────────────────────────────────────────────────
+
+@Composable
+fun BottleTypeSheet(
+    onFormula: () -> Unit,
+    onFormulaWithMl: () -> Unit,
+    onExpressed: () -> Unit,
+    onExpressedWithMl: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val strings = LocalStrings.current
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        SheetHandle()
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            "\uD83C\uDF7C ${strings.bottle}",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OptionCard(
                 modifier = Modifier.weight(1f),
                 emoji = "\uD83C\uDF7C",
-                title = strings.bottle,
+                title = strings.bottleFormula,
                 subtitle = strings.quickSave,
                 color = BottleColor,
-                onClick = onBottle
+                onClick = onFormula
             )
             OptionCard(
                 modifier = Modifier.weight(1f),
                 emoji = "\uD83C\uDF7C",
-                title = strings.bottleWithMl,
-                subtitle = strings.chooseSide,
+                title = strings.bottleFormula,
+                subtitle = strings.optionalMl,
                 color = BottleColor,
-                onClick = onBottleWithMl
+                onClick = onFormulaWithMl
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OptionCard(
                 modifier = Modifier.weight(1f),
-                emoji = "\uD83E\uDD31",
-                title = strings.breastFeeding,
-                subtitle = strings.chooseSide,
+                emoji = "\uD83E\uDD3C",
+                title = strings.bottleExpressed,
+                subtitle = strings.quickSave,
                 color = NaturalColor,
-                onClick = onBreast
+                onClick = onExpressed
             )
             OptionCard(
                 modifier = Modifier.weight(1f),
-                emoji = "\uD83E\uDED7",
-                title = strings.pump,
-                subtitle = strings.chooseSide,
-                color = PumpColor,
-                onClick = onPump
+                emoji = "\uD83E\uDD3C",
+                title = strings.bottleExpressed,
+                subtitle = strings.optionalMl,
+                color = NaturalColor,
+                onClick = onExpressedWithMl
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -1059,6 +1178,10 @@ fun eventDisplayInfo(event: BabyEvent, strings: AppStrings): Triple<String, Stri
         event.eventType == EventType.FEEDING.name -> when (event.subType) {
             FeedingSubType.BOTTLE.name ->
                 Triple("\uD83C\uDF7C", "${strings.bottle}$mlSuffix", BottleColor)
+            FeedingSubType.BOTTLE_FORMULA.name ->
+                Triple("\uD83C\uDF7C", "${strings.bottleFormula}$mlSuffix", BottleColor)
+            FeedingSubType.BOTTLE_EXPRESSED.name ->
+                Triple("\uD83E\uDD3C", "${strings.bottleExpressed}$mlSuffix", NaturalColor)
             FeedingSubType.BREAST_LEFT.name ->
                 Triple("\uD83E\uDD31", strings.breastLeft, NaturalColor)
             FeedingSubType.BREAST_RIGHT.name ->

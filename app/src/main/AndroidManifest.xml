@@ -3,6 +3,8 @@
 
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
@@ -44,6 +46,11 @@
         <!-- Widget action service (required by Glance) -->
         <service
             android:name=".widget.BabyTrackerWidgetActionService"
+            android:exported="false" />
+
+        <!-- Feeding reminder alarm receiver -->
+        <receiver
+            android:name=".data.notifications.FeedingReminderReceiver"
             android:exported="false" />
 
         <!-- FileProvider for CSV export -->

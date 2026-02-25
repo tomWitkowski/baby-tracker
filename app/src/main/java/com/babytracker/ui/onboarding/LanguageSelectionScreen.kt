@@ -19,8 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import com.babytracker.data.preferences.AppPreferences
 import com.babytracker.ui.i18n.AppStrings
-import com.babytracker.ui.i18n.EnglishStrings
-import com.babytracker.ui.i18n.PolishStrings
+import com.babytracker.ui.i18n.stringsForLang
 import com.babytracker.ui.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -41,7 +40,17 @@ fun LanguageSelectionScreen(
     viewModel: LanguageSelectionViewModel = hiltViewModel()
 ) {
     var selected by remember { mutableStateOf("pl") }
-    val preview: AppStrings = if (selected == "en") EnglishStrings else PolishStrings
+    val preview: AppStrings = stringsForLang(selected)
+
+    val languages = listOf(
+        Triple("pl", "\uD83C\uDDF5\uD83C\uDDF1", "Polski"),
+        Triple("en", "\uD83C\uDDEC\uD83C\uDDE7", "English"),
+        Triple("es", "\uD83C\uDDEA\uD83C\uDDF8", "Español"),
+        Triple("fr", "\uD83C\uDDEB\uD83C\uDDF7", "Français"),
+        Triple("it", "\uD83C\uDDEE\uD83C\uDDF9", "Italiano"),
+        Triple("uk", "\uD83C\uDDFA\uD83C\uDDE6", "Українська"),
+        Triple("zh", "\uD83C\uDDE8\uD83C\uDDF3", "中文"),
+    )
 
     Box(
         modifier = Modifier
@@ -78,24 +87,35 @@ fun LanguageSelectionScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Row 1: PL, EN, ES
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                LanguageCard(
-                    modifier = Modifier.weight(1f),
-                    flag = "🇵🇱",
-                    label = "Polski",
-                    isSelected = selected == "pl",
-                    onClick = { selected = "pl" }
-                )
-                LanguageCard(
-                    modifier = Modifier.weight(1f),
-                    flag = "🇬🇧",
-                    label = "English",
-                    isSelected = selected == "en",
-                    onClick = { selected = "en" }
-                )
+                languages.take(3).forEach { (code, flag, label) ->
+                    LanguageCard(
+                        modifier = Modifier.weight(1f),
+                        flag = flag,
+                        label = label,
+                        isSelected = selected == code,
+                        onClick = { selected = code }
+                    )
+                }
+            }
+            // Row 2: FR, IT, UK, ZH
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                languages.drop(3).forEach { (code, flag, label) ->
+                    LanguageCard(
+                        modifier = Modifier.weight(1f),
+                        flag = flag,
+                        label = label,
+                        isSelected = selected == code,
+                        onClick = { selected = code }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

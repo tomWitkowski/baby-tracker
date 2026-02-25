@@ -11,6 +11,8 @@ enum class EventType {
 
 enum class FeedingSubType {
     BOTTLE,
+    BOTTLE_FORMULA,    // butelka — mleko modyfikowane
+    BOTTLE_EXPRESSED,  // butelka — odciągnięte mleko
     BREAST_LEFT,       // lewa pierś
     BREAST_RIGHT,      // prawa pierś
     BREAST_BOTH_LR,    // lewa+prawa

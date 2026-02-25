@@ -4,19 +4,49 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Baby bottle icon -->
+
+    <!-- Baby bottle body — coral, centered, clean rounded rect -->
     <path
         android:fillColor="#FF7B7B"
-        android:pathData="M54,20 C54,20 44,25 44,40 L44,75 C44,80 48,84 54,84 C60,84 64,80 64,75 L64,40 C64,25 54,20 54,20 Z" />
+        android:pathData="M47,34 L61,34 L61,80 Q61,86 54,86 Q47,86 47,80 Z" />
+
+    <!-- Bottle shoulder / taper at top -->
     <path
-        android:fillColor="#FFDDDD"
-        android:pathData="M50,25 L58,25 L58,35 L50,35 Z" />
+        android:fillColor="#FF7B7B"
+        android:pathData="M49,26 L59,26 L61,34 L47,34 Z" />
+
+    <!-- Nipple / cap — light pink -->
     <path
-        android:fillColor="#5B8AF0"
-        android:pathData="M48,55 C50,52 52,51 54,51 C56,51 58,52 60,55 C60,55 58,58 54,58 C50,58 48,55 48,55 Z" />
-    <!-- Diaper symbol -->
+        android:fillColor="#FFCCCC"
+        android:pathData="M51,18 Q54,14 57,18 L59,26 L49,26 Z" />
+
+    <!-- Milk level window — white with opacity -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:alpha="0.45"
+        android:pathData="M50,42 L58,42 L58,68 Q58,70 54,70 Q50,70 50,68 Z" />
+
+    <!-- Measurement line 1 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:alpha="0.6"
+        android:pathData="M50,50 L58,50 L58,52 L50,52 Z" />
+
+    <!-- Measurement line 2 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:alpha="0.6"
+        android:pathData="M50,60 L58,60 L58,62 L50,62 Z" />
+
+    <!-- Safety-pin (diaper symbol) — teal, bottom-left -->
     <path
         android:fillColor="#4ECDC4"
-        android:pathData="M20,60 C20,56 23,53 27,53 L45,53 C45,57 45,63 45,67 L27,67 C23,67 20,64 20,60 Z"
-        android:alpha="0.8" />
+        android:pathData="M26,64 Q22,64 22,68 Q22,72 26,72 L32,72 L32,64 Z" />
+    <path
+        android:fillColor="#4ECDC4"
+        android:pathData="M32,58 L34,58 L34,72 L32,72 Z" />
+    <path
+        android:fillColor="#4ECDC4"
+        android:pathData="M32,56 Q36,54 38,58 Q36,62 32,60 Z" />
+
 </vector>

@@ -15,7 +15,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 
-enum class DashboardViewMode { DAY, WEEK }
+enum class DashboardViewMode { DAY, WEEK, TIMELINE }
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
@@ -107,6 +107,8 @@ class DashboardViewModel @Inject constructor(
             }
             val subType = when (event.subType) {
                 FeedingSubType.BOTTLE.name -> "Butelka"
+                FeedingSubType.BOTTLE_FORMULA.name -> "Mleko modyfikowane"
+                FeedingSubType.BOTTLE_EXPRESSED.name -> "Odciągnięte mleko"
                 FeedingSubType.BREAST_LEFT.name -> "Lewa pierś"
                 FeedingSubType.BREAST_RIGHT.name -> "Prawa pierś"
                 FeedingSubType.BREAST_BOTH_LR.name -> "Lewa+Prawa"
