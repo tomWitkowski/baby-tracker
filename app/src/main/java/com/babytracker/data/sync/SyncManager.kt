@@ -275,8 +275,9 @@ class SyncManager @Inject constructor(
                         }
 
                         Log.d(TAG, "Client: received ${received.events.size} events, ${received.tombstones.size} tombstones")
-                        mergeReceivedData(received)
+                        val count = mergeReceivedData(received)
                         if (received.babyName.isNotEmpty()) prefs.setBabyName(received.babyName)
+                        count
                     }
                 }
             }
