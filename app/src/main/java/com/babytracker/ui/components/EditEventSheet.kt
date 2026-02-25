@@ -31,6 +31,8 @@ import java.util.*
 
 private val ML_SUBTYPES = setOf(
     FeedingSubType.BOTTLE.name,
+    FeedingSubType.BOTTLE_FORMULA.name,
+    FeedingSubType.BOTTLE_EXPRESSED.name,
     FeedingSubType.PUMP.name,
     FeedingSubType.PUMP_LEFT.name,
     FeedingSubType.PUMP_RIGHT.name,
@@ -139,7 +141,7 @@ fun EditEventSheet(
                 val selected = editedEventType == type
                 val (color, emoji, label) = when (type) {
                     EventType.FEEDING -> Triple(FeedingColor, "\uD83C\uDF7C", strings.feeding)
-                    EventType.DIAPER -> Triple(DiaperColor, "\uD83D\uDCCD", strings.diaper)
+                    EventType.DIAPER -> Triple(DiaperColor, "\uD83E\uDDF7", strings.diaper)
                     EventType.SPIT_UP -> Triple(SpitUpColor, "\u21A9\uFE0F", strings.spitUp)
                 }
                 Surface(
@@ -181,10 +183,12 @@ fun EditEventSheet(
             Spacer(Modifier.height(8.dp))
 
             if (editedEventType == EventType.FEEDING) {
-                // Row 1: Bottle
+                // Row 1: Bottle types
                 SubTypeRow(
                     items = listOf(
-                        SubTypeItem(FeedingSubType.BOTTLE.name, "\uD83C\uDF7C", strings.bottle, BottleColor)
+                        SubTypeItem(FeedingSubType.BOTTLE.name, "\uD83C\uDF7C", strings.bottle, BottleColor),
+                        SubTypeItem(FeedingSubType.BOTTLE_FORMULA.name, "\uD83C\uDF7C", strings.bottleFormula, BottleColor),
+                        SubTypeItem(FeedingSubType.BOTTLE_EXPRESSED.name, "\uD83E\uDD3C", strings.bottleExpressed, NaturalColor)
                     ),
                     selectedSubType = editedSubType,
                     onSelect = { editedSubType = it }
@@ -242,7 +246,13 @@ fun EditEventSheet(
                 }
                 // ML input for bottle/pump subtypes
                 if (editedSubType in ML_SUBTYPES) {
-                    val mlColor = if (editedSubType == FeedingSubType.BOTTLE.name) BottleColor else PumpColor
+                    val mlColor = when (editedSubType) {
+                        FeedingSubType.BOTTLE_EXPRESSED.name -> NaturalColor
+                        FeedingSubType.PUMP.name, FeedingSubType.PUMP_LEFT.name,
+                        FeedingSubType.PUMP_RIGHT.name, FeedingSubType.PUMP_BOTH_LR.name,
+                        FeedingSubType.PUMP_BOTH_RL.name -> PumpColor
+                        else -> BottleColor
+                    }
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = editedMilliliters,

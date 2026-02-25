@@ -32,4 +32,47 @@ class AppPreferences @Inject constructor(
         prefs.edit().putString("baby_name", name).apply()
         _babyName.value = name
     }
+
+    // ── Theme: "system" | "light" | "dark" ───────────────────────────────────
+    private val _themeMode = MutableStateFlow(prefs.getString("theme_mode", "system") ?: "system")
+    val themeMode: StateFlow<String> = _themeMode
+
+    fun setThemeMode(mode: String) {
+        prefs.edit().putString("theme_mode", mode).apply()
+        _themeMode.value = mode
+    }
+
+    // ── Feeding reminder ──────────────────────────────────────────────────────
+    private val _reminderEnabled = MutableStateFlow(prefs.getBoolean("reminder_enabled", false))
+    val reminderEnabled: StateFlow<Boolean> = _reminderEnabled
+
+    fun setReminderEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("reminder_enabled", enabled).apply()
+        _reminderEnabled.value = enabled
+    }
+
+    var reminderDelayHours: Int
+        get() = prefs.getInt("reminder_hours", 3)
+        set(value) { prefs.edit().putInt("reminder_hours", value).apply() }
+
+    var reminderDelayMinutes: Int
+        get() = prefs.getInt("reminder_minutes", 0)
+        set(value) { prefs.edit().putInt("reminder_minutes", value).apply() }
+
+    // ── Visible feeding/diaper options ────────────────────────────────────────
+    var showBottle: Boolean
+        get() = prefs.getBoolean("show_bottle", true)
+        set(value) { prefs.edit().putBoolean("show_bottle", value).apply() }
+
+    var showBreast: Boolean
+        get() = prefs.getBoolean("show_breast", true)
+        set(value) { prefs.edit().putBoolean("show_breast", value).apply() }
+
+    var showPump: Boolean
+        get() = prefs.getBoolean("show_pump", true)
+        set(value) { prefs.edit().putBoolean("show_pump", value).apply() }
+
+    var showSpitUp: Boolean
+        get() = prefs.getBoolean("show_spit_up", true)
+        set(value) { prefs.edit().putBoolean("show_spit_up", value).apply() }
 }

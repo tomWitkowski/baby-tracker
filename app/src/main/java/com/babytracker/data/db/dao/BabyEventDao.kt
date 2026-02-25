@@ -34,7 +34,10 @@ interface BabyEventDao {
     @Query("SELECT COUNT(*) FROM baby_events WHERE eventType = :eventType AND subType = :subType AND timestamp BETWEEN :startOfDay AND :endOfDay")
     suspend fun countEventsOfSubType(eventType: String, subType: String, startOfDay: Long, endOfDay: Long): Int
 
-    @Query("SELECT SUM(milliliters) FROM baby_events WHERE eventType = 'FEEDING' AND subType = 'BOTTLE' AND milliliters IS NOT NULL AND timestamp BETWEEN :startOfDay AND :endOfDay")
+    @Query("SELECT COUNT(*) FROM baby_events WHERE eventType = :eventType AND subType IN ('BOTTLE','BOTTLE_FORMULA','BOTTLE_EXPRESSED') AND timestamp BETWEEN :startOfDay AND :endOfDay")
+    suspend fun countBottleFeedings(eventType: String, startOfDay: Long, endOfDay: Long): Int
+
+    @Query("SELECT SUM(milliliters) FROM baby_events WHERE eventType = 'FEEDING' AND subType IN ('BOTTLE','BOTTLE_FORMULA','BOTTLE_EXPRESSED') AND milliliters IS NOT NULL AND timestamp BETWEEN :startOfDay AND :endOfDay")
     suspend fun totalMlForDay(startOfDay: Long, endOfDay: Long): Int?
 
     @Query("SELECT COUNT(*) FROM baby_events WHERE eventType = :eventType AND (subType LIKE 'BREAST%' OR subType = 'NATURAL') AND timestamp BETWEEN :startOfDay AND :endOfDay")

@@ -135,7 +135,9 @@ fun DashboardScreen(
                     .padding(padding)
             ) {
                 TabRow(
-                    selectedTabIndex = if (viewMode == DashboardViewMode.DAY) 0 else 1,
+                    selectedTabIndex = when (viewMode) {
+                        DashboardViewMode.DAY -> 0; DashboardViewMode.WEEK -> 1; DashboardViewMode.TIMELINE -> 2
+                    },
                     containerColor = BackgroundColor,
                     contentColor = TextPrimary
                 ) {
@@ -143,20 +145,21 @@ fun DashboardScreen(
                         selected = viewMode == DashboardViewMode.DAY,
                         onClick = { viewModel.setViewMode(DashboardViewMode.DAY) },
                         text = {
-                            Text(
-                                strings.day,
-                                fontWeight = if (viewMode == DashboardViewMode.DAY) FontWeight.SemiBold else FontWeight.Normal
-                            )
+                            Text(strings.day, fontWeight = if (viewMode == DashboardViewMode.DAY) FontWeight.SemiBold else FontWeight.Normal)
                         }
                     )
                     Tab(
                         selected = viewMode == DashboardViewMode.WEEK,
                         onClick = { viewModel.setViewMode(DashboardViewMode.WEEK) },
                         text = {
-                            Text(
-                                strings.week,
-                                fontWeight = if (viewMode == DashboardViewMode.WEEK) FontWeight.SemiBold else FontWeight.Normal
-                            )
+                            Text(strings.week, fontWeight = if (viewMode == DashboardViewMode.WEEK) FontWeight.SemiBold else FontWeight.Normal)
+                        }
+                    )
+                    Tab(
+                        selected = viewMode == DashboardViewMode.TIMELINE,
+                        onClick = { viewModel.setViewMode(DashboardViewMode.TIMELINE) },
+                        text = {
+                            Text(strings.timeline, fontWeight = if (viewMode == DashboardViewMode.TIMELINE) FontWeight.SemiBold else FontWeight.Normal)
                         }
                     )
                 }
@@ -229,13 +232,22 @@ fun DashboardScreen(
                         }
                         item { Spacer(modifier = Modifier.height(24.dp)) }
                     }
-                } else {
+                } else if (viewMode == DashboardViewMode.WEEK) {
                     WeeklyView(
                         weeklyStats = weeklyStats,
                         selectedWeekStart = selectedWeekStart,
                         isCurrentWeek = viewModel.isCurrentWeek(),
                         onPrevious = { viewModel.goToPreviousWeek() },
                         onNext = { viewModel.goToNextWeek() }
+                    )
+                } else {
+                    TimelineView(
+                        dayEvents = dayEvents,
+                        selectedDate = selectedDate,
+                        isToday = viewModel.isToday(),
+                        onPrevious = { viewModel.goToPreviousDay() },
+                        onNext = { viewModel.goToNextDay() },
+                        onEdit = { editingEvent = it }
                     )
                 }
             }
@@ -413,7 +425,7 @@ fun WeeklyTotalsCard(totalFeedings: Int, totalDiapers: Int, totalSpitUps: Int) {
             }
             Box(modifier = Modifier.width(1.dp).height(60.dp).background(TextHint.copy(alpha = 0.25f)))
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("\uD83D\uDCCD", fontSize = 26.sp)
+                Text("\uD83E\uDDF7", fontSize = 26.sp)
                 Text(
                     totalDiapers.toString(),
                     style = MaterialTheme.typography.headlineMedium,
@@ -496,7 +508,7 @@ fun WeekDayRow(dayStats: DayStats, isToday: Boolean) {
                     )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("\uD83D\uDCCD", fontSize = 14.sp)
+                    Text("\uD83E\uDDF7", fontSize = 14.sp)
                     Text(
                         dayStats.totalDiapers.toString(),
                         style = MaterialTheme.typography.bodyMedium,
@@ -734,9 +746,108 @@ fun DashboardEventRow(
                 onClick = onDelete,
                 colors = ButtonDefaults.textButtonColors(contentColor = TextHint)
             ) {
-                Text("Usuń", style = MaterialTheme.typography.labelSmall)
+                Text(strings.deleteButton, style = MaterialTheme.typography.labelSmall)
             }
         }
+    }
+}
+
+// ── Timeline view ─────────────────────────────────────────────────────────────
+
+@Composable
+fun TimelineView(
+    dayEvents: List<com.babytracker.data.db.entity.BabyEvent>,
+    selectedDate: Long,
+    isToday: Boolean,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onEdit: (com.babytracker.data.db.entity.BabyEvent) -> Unit
+) {
+    val strings = LocalStrings.current
+    val sdf = SimpleDateFormat("EEEE, d MMMM yyyy", strings.locale)
+    val dateStr = sdf.format(Date(selectedDate)).replaceFirstChar { it.uppercase() }
+    val hourFmt = SimpleDateFormat("HH:mm", strings.locale)
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        item { Spacer(Modifier.height(4.dp)) }
+        item {
+            Surface(shape = RoundedCornerShape(20.dp), color = SurfaceColor, tonalElevation = 2.dp) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    IconButton(onClick = onPrevious) {
+                        Icon(Icons.Default.ChevronLeft, contentDescription = null, tint = TextPrimary)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(dateStr, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                        if (isToday) Text(strings.todayLong, style = MaterialTheme.typography.labelSmall, color = FeedingColor)
+                    }
+                    IconButton(onClick = onNext, enabled = !isToday) {
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = if (isToday) TextHint else TextPrimary)
+                    }
+                }
+            }
+        }
+        item { Spacer(Modifier.height(12.dp)) }
+
+        if (dayEvents.isEmpty()) {
+            item {
+                Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
+                    Text(strings.noEventsThisDay, style = MaterialTheme.typography.bodyLarge, color = TextHint)
+                }
+            }
+        } else {
+            val sortedEvents = dayEvents.sortedByDescending { it.timestamp }
+            items(sortedEvents, key = { it.id }) { event ->
+                val (emoji, label, color) = com.babytracker.ui.main.eventDisplayInfo(event, strings)
+                val time = hourFmt.format(Date(event.timestamp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    // Time column
+                    Text(
+                        time,
+                        modifier = Modifier.width(52.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                        textAlign = TextAlign.End
+                    )
+                    // Timeline spine
+                    Column(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier.size(10.dp).clip(androidx.compose.foundation.shape.CircleShape).background(color),
+                        )
+                        Box(modifier = Modifier.width(2.dp).height(40.dp).background(color.copy(alpha = 0.25f)))
+                    }
+                    // Event card
+                    Surface(
+                        modifier = Modifier.weight(1f).clickable { onEdit(event) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = color.copy(alpha = 0.10f),
+                        tonalElevation = 0.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(emoji, fontSize = 16.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(label, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                        }
+                    }
+                }
+            }
+        }
+        item { Spacer(Modifier.height(24.dp)) }
     }
 }
 
