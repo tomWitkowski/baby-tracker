@@ -69,7 +69,7 @@ fun WidgetContent() {
                 Spacer(GlanceModifier.width(12.dp))
                 WidgetActionButton(
                     modifier = GlanceModifier.defaultWeight(),
-                    emoji = "\uD83E\uDDF7",
+                    emoji = "\uD83E\uDE72",
                     label = "Pieluszka",
                     bgColor = Color(0x264ECDC4),
                     action = actionRunCallback<WidgetDiaperAction>(

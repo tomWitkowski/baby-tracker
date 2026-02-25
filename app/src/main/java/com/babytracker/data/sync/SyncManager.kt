@@ -7,6 +7,7 @@ import android.util.Log
 import com.babytracker.data.db.dao.BabyEventDao
 import com.babytracker.data.db.dao.SyncTombstoneDao
 import com.babytracker.data.db.entity.DiaperSubType
+import com.babytracker.data.preferences.AppPreferences
 import com.babytracker.data.db.entity.EventType
 import com.babytracker.data.db.entity.FeedingSubType
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -43,7 +44,8 @@ sealed class SyncState {
 class SyncManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dao: BabyEventDao,
-    private val tombstoneDao: SyncTombstoneDao
+    private val tombstoneDao: SyncTombstoneDao,
+    private val prefs: AppPreferences
 ) {
     companion object {
         private const val TAG = "SyncManager"
@@ -77,9 +79,9 @@ class SyncManager @Inject constructor(
     val syncState: StateFlow<SyncState> = _syncState
 
     val deviceId: String by lazy {
-        val prefs = context.getSharedPreferences("sync_prefs", Context.MODE_PRIVATE)
-        prefs.getString("device_id", null) ?: UUID.randomUUID().toString().also {
-            prefs.edit().putString("device_id", it).apply()
+        val syncPrefs = context.getSharedPreferences("sync_prefs", Context.MODE_PRIVATE)
+        syncPrefs.getString("device_id", null) ?: UUID.randomUUID().toString().also {
+            syncPrefs.edit().putString("device_id", it).apply()
         }
     }
 
@@ -141,10 +143,11 @@ class SyncManager @Inject constructor(
 
                 // Merge their data, then send back our current state (post-merge)
                 mergeReceivedData(received)
+                if (received.babyName.isNotEmpty()) prefs.setBabyName(received.babyName)
 
                 val ourEvents = dao.getAllEventsSync()
                 val ourTombstones = tombstoneDao.getAllTombstones()
-                writer.println(SyncMessage(deviceId, ourEvents, ourTombstones).toJson())
+                writer.println(SyncMessage(deviceId, ourEvents, ourTombstones, prefs.babyName.value).toJson())
 
                 Log.d(TAG, "Server: sync complete, sent ${ourEvents.size} events back")
             }
@@ -259,7 +262,7 @@ class SyncManager @Inject constructor(
 
                         val ourEvents = dao.getAllEventsSync()
                         val ourTombstones = tombstoneDao.getAllTombstones()
-                        writer.println(SyncMessage(deviceId, ourEvents, ourTombstones).toJson())
+                        writer.println(SyncMessage(deviceId, ourEvents, ourTombstones, prefs.babyName.value).toJson())
 
                         val json = readLimitedLine(reader) ?: return@use 0
                         val received = SyncMessage.fromJson(json)
@@ -273,6 +276,7 @@ class SyncManager @Inject constructor(
 
                         Log.d(TAG, "Client: received ${received.events.size} events, ${received.tombstones.size} tombstones")
                         mergeReceivedData(received)
+                        if (received.babyName.isNotEmpty()) prefs.setBabyName(received.babyName)
                     }
                 }
             }

@@ -21,7 +21,7 @@ class FeedingReminderScheduler @Inject constructor(
             cancel()
             return
         }
-        val delayMs = (prefs.reminderDelayHours * 3600L + prefs.reminderDelayMinutes * 60L) * 1000L
+        val delayMs = prefs.reminderTotalMinutes * 60L * 1000L
         if (delayMs <= 0) return
 
         val pendingIntent = buildPendingIntent(PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)

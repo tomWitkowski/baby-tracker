@@ -141,7 +141,7 @@ fun EditEventSheet(
                 val selected = editedEventType == type
                 val (color, emoji, label) = when (type) {
                     EventType.FEEDING -> Triple(FeedingColor, "\uD83C\uDF7C", strings.feeding)
-                    EventType.DIAPER -> Triple(DiaperColor, "\uD83E\uDDF7", strings.diaper)
+                    EventType.DIAPER -> Triple(DiaperColor, "\uD83E\uDE72", strings.diaper)
                     EventType.SPIT_UP -> Triple(SpitUpColor, "\u21A9\uFE0F", strings.spitUp)
                 }
                 Surface(

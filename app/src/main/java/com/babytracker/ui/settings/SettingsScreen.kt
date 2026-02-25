@@ -39,10 +39,8 @@ class SettingsViewModel @Inject constructor(
     fun setLanguage(lang: String) { prefs.setLanguage(lang) }
     fun setThemeMode(mode: String) { prefs.setThemeMode(mode) }
     fun setReminderEnabled(enabled: Boolean) { prefs.setReminderEnabled(enabled) }
-    fun getReminderHours() = prefs.reminderDelayHours
-    fun setReminderHours(h: Int) { prefs.reminderDelayHours = h }
-    fun getReminderMinutes() = prefs.reminderDelayMinutes
-    fun setReminderMinutes(m: Int) { prefs.reminderDelayMinutes = m }
+    fun getReminderTotalMinutes() = prefs.reminderTotalMinutes
+    fun setReminderTotalMinutes(m: Int) { prefs.reminderTotalMinutes = m }
     fun getShowBottle() = prefs.showBottle
     fun setShowBottle(v: Boolean) { prefs.showBottle = v }
     fun getShowBreast() = prefs.showBreast
@@ -67,8 +65,7 @@ fun SettingsScreen(
 
     var nameInput by remember(savedBabyName) { mutableStateOf(savedBabyName) }
     var showSaved by remember { mutableStateOf(false) }
-    var reminderHours by remember { mutableIntStateOf(viewModel.getReminderHours()) }
-    var reminderMinutes by remember { mutableIntStateOf(viewModel.getReminderMinutes()) }
+    var reminderTotalMinutes by remember { mutableIntStateOf(viewModel.getReminderTotalMinutes()) }
     var showBottle by remember { mutableStateOf(viewModel.getShowBottle()) }
     var showBreast by remember { mutableStateOf(viewModel.getShowBreast()) }
     var showPump by remember { mutableStateOf(viewModel.getShowPump()) }
@@ -128,12 +125,17 @@ fun SettingsScreen(
                 LanguageOption(Modifier.weight(1f), "\uD83C\uDDEC\uD83C\uDDE7", strings.english, savedLanguage == "en") { viewModel.setLanguage("en") }
                 LanguageOption(Modifier.weight(1f), "\uD83C\uDDEA\uD83C\uDDF8", strings.spanish, savedLanguage == "es") { viewModel.setLanguage("es") }
             }
-            // Row 2: FR, IT, UK, ZH
+            // Row 2: FR, IT, UK
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 LanguageOption(Modifier.weight(1f), "\uD83C\uDDEB\uD83C\uDDF7", strings.french, savedLanguage == "fr") { viewModel.setLanguage("fr") }
                 LanguageOption(Modifier.weight(1f), "\uD83C\uDDEE\uD83C\uDDF9", strings.italian, savedLanguage == "it") { viewModel.setLanguage("it") }
                 LanguageOption(Modifier.weight(1f), "\uD83C\uDDFA\uD83C\uDDE6", strings.ukrainian, savedLanguage == "uk") { viewModel.setLanguage("uk") }
+            }
+            // Row 3: ZH, DE
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 LanguageOption(Modifier.weight(1f), "\uD83C\uDDE8\uD83C\uDDF3", strings.chinese, savedLanguage == "zh") { viewModel.setLanguage("zh") }
+                LanguageOption(Modifier.weight(1f), "\uD83C\uDDE9\uD83C\uDDEA", strings.german, savedLanguage == "de") { viewModel.setLanguage("de") }
+                Spacer(Modifier.weight(1f))
             }
 
             // Theme
@@ -178,31 +180,34 @@ fun SettingsScreen(
                 )
             }
             if (reminderEnabled) {
-                Text(strings.reminderDelayLabel, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(strings.reminderHoursUnit, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                        Slider(
-                            value = reminderHours.toFloat(),
-                            onValueChange = { reminderHours = it.toInt(); viewModel.setReminderHours(it.toInt()) },
-                            valueRange = 1f..12f,
-                            steps = 10,
-                            colors = SliderDefaults.colors(activeTrackColor = FeedingColor, thumbColor = FeedingColor)
-                        )
-                        Text("$reminderHours ${strings.reminderHoursUnit}", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(strings.reminderMinutesUnit, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                        Slider(
-                            value = reminderMinutes.toFloat(),
-                            onValueChange = { reminderMinutes = it.toInt(); viewModel.setReminderMinutes(it.toInt()) },
-                            valueRange = 0f..55f,
-                            steps = 10,
-                            colors = SliderDefaults.colors(activeTrackColor = FeedingColor, thumbColor = FeedingColor)
-                        )
-                        Text("$reminderMinutes ${strings.reminderMinutesUnit}", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
-                    }
+                val displayHours = reminderTotalMinutes / 60
+                val displayMins = reminderTotalMinutes % 60
+                val delayText = if (displayHours > 0 && displayMins > 0)
+                    "$displayHours ${strings.reminderHoursUnit} $displayMins ${strings.reminderMinutesUnit}"
+                else if (displayHours > 0)
+                    "$displayHours ${strings.reminderHoursUnit}"
+                else
+                    "$displayMins ${strings.reminderMinutesUnit}"
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(strings.reminderDelayLabel, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                    Text(delayText, style = MaterialTheme.typography.bodySmall, color = TextPrimary)
                 }
+                Slider(
+                    value = reminderTotalMinutes.toFloat(),
+                    onValueChange = {
+                        val snapped = (it / 5).toInt() * 5
+                        reminderTotalMinutes = snapped
+                        viewModel.setReminderTotalMinutes(snapped)
+                    },
+                    valueRange = 30f..480f,
+                    steps = 89,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = SliderDefaults.colors(activeTrackColor = FeedingColor, thumbColor = FeedingColor)
+                )
             }
 
             // Feeding options filter

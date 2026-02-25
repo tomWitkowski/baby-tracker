@@ -151,6 +151,7 @@ data class AppStrings(
     val italian: String,
     val ukrainian: String,
     val chinese: String,
+    val german: String,
 )
 
 val PolishStrings = AppStrings(
@@ -280,6 +281,7 @@ val PolishStrings = AppStrings(
     italian = "Italiano",
     ukrainian = "Українська",
     chinese = "中文",
+    german = "Deutsch",
 )
 
 val EnglishStrings = AppStrings(
@@ -409,6 +411,7 @@ val EnglishStrings = AppStrings(
     italian = "Italiano",
     ukrainian = "Українська",
     chinese = "中文",
+    german = "Deutsch",
 )
 
 val SpanishStrings = AppStrings(
@@ -513,7 +516,7 @@ val SpanishStrings = AppStrings(
     themeLabel = "Tema", themeSystem = "Sistema", themeLight = "Claro", themeDark = "Oscuro",
     feedingOptionsLabel = "Mostrar opciones", showBottleOption = "Biberón", showBreastOption = "Pecho",
     showPumpOption = "Sacaleches", showSpitUpOption = "Regurgitación",
-    spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文",
+    spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文", german = "Deutsch",
 )
 
 val FrenchStrings = AppStrings(
@@ -565,7 +568,7 @@ val FrenchStrings = AppStrings(
     themeLabel = "Thème", themeSystem = "Système", themeLight = "Clair", themeDark = "Sombre",
     feedingOptionsLabel = "Options", showBottleOption = "Biberon", showBreastOption = "Sein",
     showPumpOption = "Tire-lait", showSpitUpOption = "Régurgitation",
-    spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文",
+    spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文", german = "Deutsch",
 )
 
 val ItalianStrings = AppStrings(
@@ -617,7 +620,7 @@ val ItalianStrings = AppStrings(
     themeLabel = "Tema", themeSystem = "Sistema", themeLight = "Chiaro", themeDark = "Scuro",
     feedingOptionsLabel = "Opzioni", showBottleOption = "Biberon", showBreastOption = "Seno",
     showPumpOption = "Tiralatte", showSpitUpOption = "Rigurgito",
-    spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文",
+    spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文", german = "Deutsch",
 )
 
 val UkrainianStrings = AppStrings(
@@ -669,7 +672,7 @@ val UkrainianStrings = AppStrings(
     themeLabel = "Тема", themeSystem = "Системна", themeLight = "Світла", themeDark = "Темна",
     feedingOptionsLabel = "Показати опції", showBottleOption = "Пляшка", showBreastOption = "Груди",
     showPumpOption = "Відсмоктувач", showSpitUpOption = "Зригнення",
-    spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文",
+    spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文", german = "Deutsch",
 )
 
 val ChineseStrings = AppStrings(
@@ -721,7 +724,59 @@ val ChineseStrings = AppStrings(
     themeLabel = "主题", themeSystem = "跟随系统", themeLight = "浅色", themeDark = "深色",
     feedingOptionsLabel = "显示选项", showBottleOption = "奶瓶", showBreastOption = "母乳",
     showPumpOption = "吸奶", showSpitUpOption = "吐奶",
-    spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文",
+    spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文", german = "Deutsch",
+)
+
+val GermanStrings = AppStrings(
+    locale = Locale("de"),
+    defaultBabyTitle = "Baby", feeding = "Stillen", diaper = "Windel", pump = "Milchpumpe", spitUp = "Gespuckt",
+    holdForMl = "Flasche gedrückt halten, um ml einzugeben",
+    recentActivity = "Letzte Aktivitäten", noEventsHint = "Tippe auf einen Button,\num ein Ereignis zu erfassen",
+    dashboard = "Statistiken", settings = "Einstellungen", syncButton = "Synchronisieren",
+    bottle = "Flasche", bottleWithMl = "Flasche + ml", breastFeeding = "Stillen",
+    chooseSide = "Seite wählen", optionalMl = "Optionale ml", quickSave = "Schnell speichern",
+    breastLeft = "Links", breastRight = "Rechts", breastBothLR = "Links+Rechts", breastBothRL = "Rechts+Links",
+    startedLeft = "Angefangen links", startedRight = "Angefangen rechts",
+    pumpSideTitle = "Milchpumpe — Seite wählen",
+    pee = "Pipi", poop = "Kaka", mixed = "Gemischt", wetDiaper = "Nasse Windel", mixedDesc = "Pipi und Kaka",
+    howManyMl = "Wie viele ml? (optional)", amountLabel = "Menge",
+    exampleMlSmall = "z.B. 80", exampleMlLarge = "z.B. 120",
+    saveWithoutAmount = "Ohne Menge speichern", saveMlFormat = "%dml speichern", cancel = "Abbrechen",
+    bottleSaved = "🍼 Flasche gespeichert ✓", bottleMlSavedFmt = "🍼 Flasche %dml gespeichert ✓",
+    breastSaved = "🤱 Stillen gespeichert ✓", pumpSaved = "🤲 Milchpumpe gespeichert ✓",
+    pumpMlSavedFmt = "🤲 Milchpumpe %dml gespeichert ✓",
+    peeSaved = "🟡 Pipi gespeichert ✓", poopSaved = "🟤 Kaka gespeichert ✓",
+    mixedSaved = "🟠 Gemischt gespeichert ✓", spitUpSaved = "↩️ Gespuckt gespeichert ✓",
+    syncSuccessPrefix = "Sync +", syncAlreadySynced = "Bereits synchronisiert",
+    syncNoDevice = "Kein Gerät gefunden", syncError = "Synchronisierungsfehler",
+    back = "Zurück", exportCsv = "CSV exportieren", day = "Tag", week = "Woche",
+    eventsThisDay = "Ereignisse dieses Tages", noEventsThisDay = "Keine Ereignisse an diesem Tag",
+    dayByDay = "Tag für Tag", thisWeek = "Diese Woche",
+    feedingLabel = "Stillen", diapersLabel = "Windeln", spitUpLabel = "Gespuckt",
+    bottleLabel = "Flasche", breastLabel = "Brust", pumpLabel = "Milchpumpe",
+    peeLabel = "Pipi", poopLabel = "Kaka", mixedLabel = "Gemischt", noEvents = "Keine Ereignisse",
+    todayLabel = "Heute", todayLong = "Heute",
+    feedingsUnit = "Mahlzeiten", diapersUnit = "Windeln", spitUpsUnit = "Gespuckt",
+    mon = "Mo", tue = "Di", wed = "Mi", thu = "Do", fri = "Fr", sat = "Sa", sun = "So",
+    editEvent = "Ereignis bearbeiten", dateLabel = "Datum", timeLabel = "Uhrzeit",
+    eventTypeLabel = "Ereignistyp", details = "Details",
+    mlOptional = "Menge ml (optional)", saveChanges = "Änderungen speichern",
+    settingsTitle = "Einstellungen", babyNameLabel = "Name des Babys", babyNameHint = "z.B. Emma",
+    languageLabel = "Sprache", saveButton = "Speichern", savedConfirmation = "Gespeichert ✓",
+    chooseLanguage = "Sprache wählen", continueButton = "Weiter",
+    polish = "Polski", english = "English",
+    deleteButton = "Löschen",
+    bottleFormula = "Formulamilch", bottleExpressed = "Abgepumpte Milch",
+    formulaSaved = "🍼 Formulamilch gespeichert ✓", formulaMlSavedFmt = "🍼 Formulamilch %dml gespeichert ✓",
+    expressedSaved = "🍼 Abgepumpte Milch gespeichert ✓", expressedMlSavedFmt = "🍼 Abgepumpt %dml gespeichert ✓",
+    timeline = "Zeitstrahl",
+    reminderLabel = "Erinnerung", reminderEnabledLabel = "Stillzeit-Erinnerung",
+    reminderDelayLabel = "Erinnern nach", reminderHoursUnit = "Std", reminderMinutesUnit = "Min",
+    reminderNotifTitle = "Zeit zum Stillen 🍼", reminderNotifBody = "Die letzte Mahlzeit war vor mehr als %1\$d Std %2\$d Min",
+    themeLabel = "Design", themeSystem = "System", themeLight = "Hell", themeDark = "Dunkel",
+    feedingOptionsLabel = "Optionen", showBottleOption = "Flasche", showBreastOption = "Brust",
+    showPumpOption = "Milchpumpe", showSpitUpOption = "Gespuckt",
+    spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文", german = "Deutsch",
 )
 
 fun stringsForLang(lang: String): AppStrings = when (lang) {
@@ -731,6 +786,7 @@ fun stringsForLang(lang: String): AppStrings = when (lang) {
     "it" -> ItalianStrings
     "uk" -> UkrainianStrings
     "zh" -> ChineseStrings
+    "de" -> GermanStrings
     else -> PolishStrings
 }
 

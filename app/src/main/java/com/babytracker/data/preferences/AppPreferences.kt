@@ -51,13 +51,9 @@ class AppPreferences @Inject constructor(
         _reminderEnabled.value = enabled
     }
 
-    var reminderDelayHours: Int
-        get() = prefs.getInt("reminder_hours", 3)
-        set(value) { prefs.edit().putInt("reminder_hours", value).apply() }
-
-    var reminderDelayMinutes: Int
-        get() = prefs.getInt("reminder_minutes", 0)
-        set(value) { prefs.edit().putInt("reminder_minutes", value).apply() }
+    var reminderTotalMinutes: Int
+        get() = prefs.getInt("reminder_total_minutes", 180)
+        set(value) { prefs.edit().putInt("reminder_total_minutes", value).apply() }
 
     // ── Visible feeding/diaper options ────────────────────────────────────────
     var showBottle: Boolean

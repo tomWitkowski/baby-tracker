@@ -1,5 +1,6 @@
 package com.babytracker.ui.main
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -112,6 +113,30 @@ fun MainScreen(
         if (showSuccessBadge != null) {
             kotlinx.coroutines.delay(1500)
             showSuccessBadge = null
+        }
+    }
+
+    // Back press: close open sheet instead of exiting the app.
+    // On the ML-input sheets, save first so nothing is lost.
+    BackHandler(enabled = bottomSheetState != BottomSheetState.Hidden) {
+        when (val state = bottomSheetState) {
+            is BottomSheetState.BottleMlInput -> {
+                val ml = mlInput.toIntOrNull()
+                viewModel.logBottleFeeding(state.subType, ml)
+                showSuccessBadge = when (state.subType) {
+                    FeedingSubType.BOTTLE_FORMULA -> if (ml != null) String.format(strings.formulaMlSavedFmt, ml) else strings.formulaSaved
+                    FeedingSubType.BOTTLE_EXPRESSED -> if (ml != null) String.format(strings.expressedMlSavedFmt, ml) else strings.expressedSaved
+                    else -> if (ml != null) String.format(strings.bottleMlSavedFmt, ml) else strings.bottleSaved
+                }
+                bottomSheetState = BottomSheetState.Hidden
+            }
+            is BottomSheetState.PumpMlInput -> {
+                val ml = pumpMlInput.toIntOrNull()
+                viewModel.logPump(pumpSelectedSubType, ml)
+                showSuccessBadge = if (ml != null) String.format(strings.pumpMlSavedFmt, ml) else strings.pumpSaved
+                bottomSheetState = BottomSheetState.Hidden
+            }
+            else -> bottomSheetState = BottomSheetState.Hidden
         }
     }
 
@@ -251,7 +276,7 @@ fun MainScreen(
                     modifier = Modifier.weight(1f),
                     color = DiaperColor,
                     lightColor = DiaperColorLight,
-                    emoji = "\uD83E\uDDF7",
+                    emoji = "\uD83E\uDE72",
                     label = strings.diaper,
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -403,10 +428,6 @@ fun MainScreen(
                         showBreast = viewModel.showBreast,
                         showPump = viewModel.showPump,
                         onBottle = { bottomSheetState = BottomSheetState.BottleTypeOptions },
-                        onBottleWithMl = {
-                            mlInput = ""
-                            bottomSheetState = BottomSheetState.BottleMlInput()
-                        },
                         onBreast = { bottomSheetState = BottomSheetState.BreastSideOptions },
                         onPump = { bottomSheetState = BottomSheetState.PumpSideOptions },
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden }
@@ -569,7 +590,6 @@ fun FeedingSheet(
     showBreast: Boolean = true,
     showPump: Boolean = true,
     onBottle: () -> Unit,
-    onBottleWithMl: () -> Unit,
     onBreast: () -> Unit,
     onPump: () -> Unit,
     onDismiss: () -> Unit
@@ -591,27 +611,14 @@ fun FeedingSheet(
         )
         Spacer(modifier = Modifier.height(24.dp))
         if (showBottle) {
-            Row(
+            OptionCard(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OptionCard(
-                    modifier = Modifier.weight(1f),
-                    emoji = "\uD83C\uDF7C",
-                    title = strings.bottle,
-                    subtitle = strings.quickSave,
-                    color = BottleColor,
-                    onClick = onBottle
-                )
-                OptionCard(
-                    modifier = Modifier.weight(1f),
-                    emoji = "\uD83C\uDF7C",
-                    title = strings.bottleWithMl,
-                    subtitle = strings.chooseSide,
-                    color = BottleColor,
-                    onClick = onBottleWithMl
-                )
-            }
+                emoji = "\uD83C\uDF7C",
+                title = strings.bottle,
+                subtitle = strings.optionalMl,
+                color = BottleColor,
+                onClick = onBottle
+            )
             Spacer(modifier = Modifier.height(12.dp))
         }
         if (showBreast || showPump) {
@@ -632,7 +639,7 @@ fun FeedingSheet(
                 if (showPump) {
                     OptionCard(
                         modifier = Modifier.weight(1f),
-                        emoji = "\uD83E\uDED7",
+                        emoji = "\uD83E\uDD32",
                         title = strings.pump,
                         subtitle = strings.chooseSide,
                         color = PumpColor,
@@ -695,7 +702,7 @@ fun BottleTypeSheet(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OptionCard(
                 modifier = Modifier.weight(1f),
-                emoji = "\uD83E\uDD3C",
+                emoji = "\uD83E\uDED9",
                 title = strings.bottleExpressed,
                 subtitle = strings.quickSave,
                 color = NaturalColor,
@@ -703,7 +710,7 @@ fun BottleTypeSheet(
             )
             OptionCard(
                 modifier = Modifier.weight(1f),
-                emoji = "\uD83E\uDD3C",
+                emoji = "\uD83E\uDED9",
                 title = strings.bottleExpressed,
                 subtitle = strings.optionalMl,
                 color = NaturalColor,
@@ -1181,7 +1188,7 @@ fun eventDisplayInfo(event: BabyEvent, strings: AppStrings): Triple<String, Stri
             FeedingSubType.BOTTLE_FORMULA.name ->
                 Triple("\uD83C\uDF7C", "${strings.bottleFormula}$mlSuffix", BottleColor)
             FeedingSubType.BOTTLE_EXPRESSED.name ->
-                Triple("\uD83E\uDD3C", "${strings.bottleExpressed}$mlSuffix", NaturalColor)
+                Triple("\uD83E\uDED9", "${strings.bottleExpressed}$mlSuffix", NaturalColor)
             FeedingSubType.BREAST_LEFT.name ->
                 Triple("\uD83E\uDD31", strings.breastLeft, NaturalColor)
             FeedingSubType.BREAST_RIGHT.name ->
@@ -1191,15 +1198,15 @@ fun eventDisplayInfo(event: BabyEvent, strings: AppStrings): Triple<String, Stri
             FeedingSubType.BREAST_BOTH_RL.name ->
                 Triple("\uD83E\uDD31", "${strings.breastRight}\u2192${strings.breastLeft}", NaturalColor)
             FeedingSubType.PUMP.name ->
-                Triple("\uD83E\uDED7", "${strings.pump}$mlSuffix", PumpColor)
+                Triple("\uD83E\uDD32", "${strings.pump}$mlSuffix", PumpColor)
             FeedingSubType.PUMP_LEFT.name ->
-                Triple("\uD83E\uDED7", "${strings.pump} · ${strings.breastLeft}$mlSuffix", PumpColor)
+                Triple("\uD83E\uDD32", "${strings.pump} · ${strings.breastLeft}$mlSuffix", PumpColor)
             FeedingSubType.PUMP_RIGHT.name ->
-                Triple("\uD83E\uDED7", "${strings.pump} · ${strings.breastRight}$mlSuffix", PumpColor)
+                Triple("\uD83E\uDD32", "${strings.pump} · ${strings.breastRight}$mlSuffix", PumpColor)
             FeedingSubType.PUMP_BOTH_LR.name ->
-                Triple("\uD83E\uDED7", "${strings.pump} · ${strings.breastLeft}\u2192${strings.breastRight}$mlSuffix", PumpColor)
+                Triple("\uD83E\uDD32", "${strings.pump} · ${strings.breastLeft}\u2192${strings.breastRight}$mlSuffix", PumpColor)
             FeedingSubType.PUMP_BOTH_RL.name ->
-                Triple("\uD83E\uDED7", "${strings.pump} · ${strings.breastRight}\u2192${strings.breastLeft}$mlSuffix", PumpColor)
+                Triple("\uD83E\uDD32", "${strings.pump} · ${strings.breastRight}\u2192${strings.breastLeft}$mlSuffix", PumpColor)
             else -> Triple("\uD83E\uDD31", strings.breastFeeding, NaturalColor)
         }
         event.subType == DiaperSubType.PEE.name -> Triple("\uD83D\uDFE1", strings.pee, PeeColor)
