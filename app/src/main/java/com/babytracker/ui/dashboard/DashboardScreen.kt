@@ -826,6 +826,7 @@ fun TimelineView(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
+                reverseLayout = true,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
             ) {
                 items(listItems) { item ->
