@@ -7,6 +7,7 @@ import org.json.JSONObject
 
 data class SyncMessage(
     val deviceId: String,
+    val deviceName: String = "",
     val events: List<BabyEvent>,
     val tombstones: List<SyncTombstone> = emptyList(),
     val babyName: String = ""
@@ -14,6 +15,7 @@ data class SyncMessage(
     fun toJson(): String {
         val obj = JSONObject()
         obj.put("deviceId", deviceId)
+        if (deviceName.isNotEmpty()) obj.put("deviceName", deviceName)
         if (babyName.isNotEmpty()) obj.put("babyName", babyName)
 
         val eventsArr = JSONArray()
@@ -74,8 +76,9 @@ data class SyncMessage(
                 }
             } else emptyList()
 
+            val deviceName = if (obj.has("deviceName")) obj.getString("deviceName") else ""
             val babyName = if (obj.has("babyName")) obj.getString("babyName") else ""
-            return SyncMessage(deviceId, events, tombstones, babyName)
+            return SyncMessage(deviceId, deviceName, events, tombstones, babyName)
         }
     }
 }

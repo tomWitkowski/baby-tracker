@@ -154,6 +154,13 @@ data class AppStrings(
     val ukrainian: String,
     val chinese: String,
     val german: String,
+    // ── Sync trust dialog ─────────────────────────────────────────────────────
+    val syncTrustTitle: String,
+    val syncTrustBody: String,         // use String.format(syncTrustBody, deviceName)
+    val syncTrustAllowAlways: String,
+    val syncTrustAllowOnce: String,
+    val syncTrustDeny: String,
+    val syncAwaitingApproval: String,
 )
 
 val PolishStrings = AppStrings(
@@ -286,6 +293,12 @@ val PolishStrings = AppStrings(
     ukrainian = "Українська",
     chinese = "中文",
     german = "Deutsch",
+    syncTrustTitle = "Nowe urządzenie",
+    syncTrustBody = "Urządzenie \"%s\" chce się zsynchronizować. Zezwolić?",
+    syncTrustAllowAlways = "Zezwól zawsze",
+    syncTrustAllowOnce = "Tylko raz",
+    syncTrustDeny = "Odrzuć",
+    syncAwaitingApproval = "Oczekiwanie na zatwierdzenie",
 )
 
 val EnglishStrings = AppStrings(
@@ -418,6 +431,12 @@ val EnglishStrings = AppStrings(
     ukrainian = "Українська",
     chinese = "中文",
     german = "Deutsch",
+    syncTrustTitle = "New device",
+    syncTrustBody = "Device \"%s\" wants to sync. Allow?",
+    syncTrustAllowAlways = "Always allow",
+    syncTrustAllowOnce = "Allow once",
+    syncTrustDeny = "Deny",
+    syncAwaitingApproval = "Awaiting approval on the other device",
 )
 
 val SpanishStrings = AppStrings(
@@ -525,6 +544,12 @@ val SpanishStrings = AppStrings(
     showBreastOption = "Pecho",
     showPumpOption = "Sacaleches", showSpitUpOption = "Regurgitación",
     spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文", german = "Deutsch",
+    syncTrustTitle = "Nuevo dispositivo",
+    syncTrustBody = "El dispositivo \"%s\" quiere sincronizarse. ¿Permitir?",
+    syncTrustAllowAlways = "Permitir siempre",
+    syncTrustAllowOnce = "Solo una vez",
+    syncTrustDeny = "Rechazar",
+    syncAwaitingApproval = "Esperando aprobación en el otro dispositivo",
 )
 
 val FrenchStrings = AppStrings(
@@ -579,6 +604,12 @@ val FrenchStrings = AppStrings(
     showBreastOption = "Sein",
     showPumpOption = "Tire-lait", showSpitUpOption = "Régurgitation",
     spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文", german = "Deutsch",
+    syncTrustTitle = "Nouvel appareil",
+    syncTrustBody = "L'appareil \"%s\" veut se synchroniser. Autoriser ?",
+    syncTrustAllowAlways = "Toujours autoriser",
+    syncTrustAllowOnce = "Une seule fois",
+    syncTrustDeny = "Refuser",
+    syncAwaitingApproval = "En attente d'approbation sur l'autre appareil",
 )
 
 val ItalianStrings = AppStrings(
@@ -633,6 +664,12 @@ val ItalianStrings = AppStrings(
     showBreastOption = "Seno",
     showPumpOption = "Tiralatte", showSpitUpOption = "Rigurgito",
     spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文", german = "Deutsch",
+    syncTrustTitle = "Nuovo dispositivo",
+    syncTrustBody = "Il dispositivo \"%s\" vuole sincronizzarsi. Consentire?",
+    syncTrustAllowAlways = "Consenti sempre",
+    syncTrustAllowOnce = "Solo questa volta",
+    syncTrustDeny = "Rifiuta",
+    syncAwaitingApproval = "In attesa di approvazione sull'altro dispositivo",
 )
 
 val UkrainianStrings = AppStrings(
@@ -674,6 +711,12 @@ val UkrainianStrings = AppStrings(
     chooseLanguage = "Оберіть мову", continueButton = "Далі",
     polish = "Polski", english = "English",
     deleteButton = "Видалити",
+    syncTrustTitle = "Новий пристрій",
+    syncTrustBody = "Пристрій \"%s\" хоче синхронізуватися. Дозволити?",
+    syncTrustAllowAlways = "Завжди дозволяти",
+    syncTrustAllowOnce = "Лише цього разу",
+    syncTrustDeny = "Відхилити",
+    syncAwaitingApproval = "Очікування підтвердження на іншому пристрої",
     bottleFormula = "Суміш", bottleExpressed = "Зціджене",
     formulaSaved = "🍼 Суміш збережено ✓", formulaMlSavedFmt = "🍼 Суміш %dмл збережено ✓",
     expressedSaved = "🍼 Зціджене молоко збережено ✓", expressedMlSavedFmt = "🍼 Зціджене %dмл збережено ✓",
@@ -741,6 +784,12 @@ val ChineseStrings = AppStrings(
     showBreastOption = "母乳",
     showPumpOption = "吸奶", showSpitUpOption = "吐奶",
     spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文", german = "Deutsch",
+    syncTrustTitle = "新设备",
+    syncTrustBody = "设备\"%s\"想要同步。允许吗？",
+    syncTrustAllowAlways = "始终允许",
+    syncTrustAllowOnce = "仅此一次",
+    syncTrustDeny = "拒绝",
+    syncAwaitingApproval = "等待另一设备批准",
 )
 
 val GermanStrings = AppStrings(
@@ -795,6 +844,12 @@ val GermanStrings = AppStrings(
     showBreastOption = "Brust",
     showPumpOption = "Milchpumpe", showSpitUpOption = "Gespuckt",
     spanish = "Español", french = "Français", italian = "Italiano", ukrainian = "Українська", chinese = "中文", german = "Deutsch",
+    syncTrustTitle = "Neues Gerät",
+    syncTrustBody = "Gerät \"%s\" möchte synchronisieren. Erlauben?",
+    syncTrustAllowAlways = "Immer erlauben",
+    syncTrustAllowOnce = "Nur einmal",
+    syncTrustDeny = "Ablehnen",
+    syncAwaitingApproval = "Warte auf Genehmigung am anderen Gerät",
 )
 
 fun stringsForLang(lang: String): AppStrings = when (lang) {

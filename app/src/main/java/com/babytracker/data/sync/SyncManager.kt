@@ -3,10 +3,13 @@ package com.babytracker.data.sync
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
+import android.os.Build
 import android.util.Log
 import com.babytracker.data.db.dao.BabyEventDao
 import com.babytracker.data.db.dao.SyncTombstoneDao
+import com.babytracker.data.db.dao.TrustedDeviceDao
 import com.babytracker.data.db.entity.DiaperSubType
+import com.babytracker.data.db.entity.TrustedDevice
 import com.babytracker.data.preferences.AppPreferences
 import com.babytracker.data.db.entity.EventType
 import com.babytracker.data.db.entity.FeedingSubType
@@ -20,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -27,6 +31,7 @@ import java.io.PrintWriter
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
+import java.util.Collections
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -38,13 +43,19 @@ sealed class SyncState {
     data class Success(val added: Int) : SyncState()
     data class Error(val message: String) : SyncState()
     object NoDeviceFound : SyncState()
+    /** Server rejected our request — waiting for the owner to approve on their phone */
+    object AwaitingApproval : SyncState()
 }
+
+/** Pending trust-approval request from an unknown incoming device */
+data class TrustRequest(val deviceId: String, val deviceName: String)
 
 @Singleton
 class SyncManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dao: BabyEventDao,
     private val tombstoneDao: SyncTombstoneDao,
+    private val trustedDeviceDao: TrustedDeviceDao,
     private val prefs: AppPreferences
 ) {
     companion object {
@@ -77,6 +88,20 @@ class SyncManager @Inject constructor(
 
     private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
     val syncState: StateFlow<SyncState> = _syncState
+
+    /** Non-null when an unknown device is requesting sync and awaits user approval */
+    private val _pendingTrustRequest = MutableStateFlow<TrustRequest?>(null)
+    val pendingTrustRequest: StateFlow<TrustRequest?> = _pendingTrustRequest
+
+    /**
+     * Device IDs approved for this session only (not persisted to DB).
+     * Thread-safe because sync operations run on IO dispatcher.
+     */
+    private val sessionTrustedIds: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
+
+    /** Human-readable name of this device sent alongside our deviceId */
+    private val localDeviceName: String =
+        "${Build.MANUFACTURER} ${Build.MODEL}".trim().take(64)
 
     val deviceId: String by lazy {
         val syncPrefs = context.getSharedPreferences("sync_prefs", Context.MODE_PRIVATE)
@@ -132,6 +157,27 @@ class SyncManager @Inject constructor(
                 val json = readLimitedLine(reader) ?: return
                 val received = SyncMessage.fromJson(json)
 
+                // ── Trust check ──────────────────────────────────────────────
+                // Allow only: ourselves (same UUID), session-approved IDs, or
+                // permanently trusted IDs stored in DB.
+                val isOwnDevice = received.deviceId == deviceId
+                val isSessionTrusted = received.deviceId in sessionTrustedIds
+                val isDbTrusted = trustedDeviceDao.isTrusted(received.deviceId) > 0
+
+                if (!isOwnDevice && !isSessionTrusted && !isDbTrusted) {
+                    Log.i(TAG, "Server: unknown device ${received.deviceId} — requesting approval")
+                    val safeName = received.deviceName.take(64).ifEmpty { received.deviceId.take(8) }
+                    writer.println(
+                        JSONObject()
+                            .put("approved", false)
+                            .put("reason", "approval_required")
+                            .toString()
+                    )
+                    _pendingTrustRequest.value = TrustRequest(received.deviceId, safeName)
+                    return
+                }
+                // ─────────────────────────────────────────────────────────────
+
                 // Validate limits before processing to prevent bulk-deletion attacks
                 if (received.events.size > MAX_EVENTS_PER_SYNC ||
                     received.tombstones.size > MAX_TOMBSTONES_PER_SYNC) {
@@ -147,13 +193,45 @@ class SyncManager @Inject constructor(
 
                 val ourEvents = dao.getAllEventsSync()
                 val ourTombstones = tombstoneDao.getAllTombstones()
-                writer.println(SyncMessage(deviceId, ourEvents, ourTombstones, prefs.babyName.value).toJson())
+                writer.println(SyncMessage(deviceId, localDeviceName, ourEvents, ourTombstones, prefs.babyName.value).toJson())
 
                 Log.d(TAG, "Server: sync complete, sent ${ourEvents.size} events back")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling incoming connection: ${e.message}")
         }
+    }
+
+    // ── Trust management ─────────────────────────────────────────────────────
+
+    /**
+     * Called from UI when user approves an incoming trust request.
+     * @param permanent if true, the device is stored in DB and trusted permanently;
+     *                  if false, trusted only for this app session.
+     */
+    suspend fun approveTrust(permanent: Boolean) {
+        val request = _pendingTrustRequest.value ?: return
+        sessionTrustedIds.add(request.deviceId)
+        if (permanent) {
+            trustedDeviceDao.insert(
+                TrustedDevice(
+                    deviceId = request.deviceId,
+                    deviceName = request.deviceName,
+                    addedAt = System.currentTimeMillis()
+                )
+            )
+            Log.i(TAG, "Trust granted permanently to ${request.deviceName} (${request.deviceId})")
+        } else {
+            Log.i(TAG, "Trust granted for this session to ${request.deviceName}")
+        }
+        _pendingTrustRequest.value = null
+    }
+
+    /** Called from UI when user denies the trust request. */
+    fun denyTrust() {
+        val request = _pendingTrustRequest.value
+        Log.i(TAG, "Trust denied for ${request?.deviceName} (${request?.deviceId})")
+        _pendingTrustRequest.value = null
     }
 
     // -------------------------------------------------------------------------
@@ -262,9 +340,20 @@ class SyncManager @Inject constructor(
 
                         val ourEvents = dao.getAllEventsSync()
                         val ourTombstones = tombstoneDao.getAllTombstones()
-                        writer.println(SyncMessage(deviceId, ourEvents, ourTombstones, prefs.babyName.value).toJson())
+                        writer.println(SyncMessage(deviceId, localDeviceName, ourEvents, ourTombstones, prefs.babyName.value).toJson())
 
                         val json = readLimitedLine(reader) ?: return@use 0
+
+                        // Check whether server rejected us (approval required on their side)
+                        try {
+                            val check = JSONObject(json)
+                            if (!check.optBoolean("approved", true) &&
+                                check.optString("reason") == "approval_required") {
+                                Log.i(TAG, "Client: server requires approval — ask user on that device")
+                                return@use -1  // sentinel: AwaitingApproval
+                            }
+                        } catch (_: Exception) { /* not a rejection object, proceed normally */ }
+
                         val received = SyncMessage.fromJson(json)
 
                         // Validate limits
@@ -282,11 +371,13 @@ class SyncManager @Inject constructor(
                 }
             }
 
-            if (changes == null) {
-                Log.w(TAG, "Sync timed out after ${SYNC_TOTAL_TIMEOUT_MS}ms")
-                _syncState.value = SyncState.Error("Przekroczono limit czasu synchronizacji")
-            } else {
-                _syncState.value = SyncState.Success(changes)
+            when {
+                changes == null -> {
+                    Log.w(TAG, "Sync timed out after ${SYNC_TOTAL_TIMEOUT_MS}ms")
+                    _syncState.value = SyncState.Error("Przekroczono limit czasu synchronizacji")
+                }
+                changes == -1 -> _syncState.value = SyncState.AwaitingApproval
+                else -> _syncState.value = SyncState.Success(changes)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Sync error: ${e.message}")

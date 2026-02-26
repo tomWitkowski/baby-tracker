@@ -10,6 +10,7 @@ import com.babytracker.data.preferences.AppPreferences
 import com.babytracker.data.repository.EventRepository
 import com.babytracker.data.sync.SyncManager
 import com.babytracker.data.sync.SyncState
+import com.babytracker.data.sync.TrustRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +30,7 @@ class MainViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val syncState: StateFlow<SyncState> = syncManager.syncState
+    val pendingTrustRequest: StateFlow<TrustRequest?> = syncManager.pendingTrustRequest
 
     val babyName: StateFlow<String> = appPreferences.babyName
 
@@ -93,4 +95,10 @@ class MainViewModel @Inject constructor(
             syncManager.syncNow()
         }
     }
+
+    fun approveTrust(permanent: Boolean) {
+        viewModelScope.launch { syncManager.approveTrust(permanent) }
+    }
+
+    fun denyTrust() = syncManager.denyTrust()
 }

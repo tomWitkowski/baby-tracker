@@ -81,6 +81,7 @@ fun MainScreen(
     val strings = LocalStrings.current
     val recentEvents by viewModel.recentEvents.collectAsState()
     val syncState by viewModel.syncState.collectAsState()
+    val pendingTrustRequest by viewModel.pendingTrustRequest.collectAsState()
     val babyName by viewModel.babyName.collectAsState()
     var bottomSheetState by remember { mutableStateOf<BottomSheetState>(BottomSheetState.Hidden) }
     var mlInput by remember { mutableStateOf("") }
@@ -105,8 +106,47 @@ fun MainScreen(
                 if (s.added > 0) "${strings.syncSuccessPrefix}${s.added}" else strings.syncAlreadySynced
             is SyncState.NoDeviceFound -> showSuccessBadge = strings.syncNoDevice
             is SyncState.Error -> showSuccessBadge = strings.syncError
+            is SyncState.AwaitingApproval -> showSuccessBadge = strings.syncAwaitingApproval
             else -> {}
         }
+    }
+
+    // Trust-approval dialog — shown when an unknown device tries to sync with us
+    pendingTrustRequest?.let { request ->
+        AlertDialog(
+            onDismissRequest = { viewModel.denyTrust() },
+            title = {
+                Text(strings.syncTrustTitle, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(String.format(strings.syncTrustBody, request.deviceName))
+            },
+            confirmButton = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Button(
+                        onClick = { viewModel.approveTrust(permanent = true) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = com.babytracker.ui.theme.FeedingColor
+                        )
+                    ) { Text(strings.syncTrustAllowAlways) }
+
+                    OutlinedButton(
+                        onClick = { viewModel.approveTrust(permanent = false) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(strings.syncTrustAllowOnce) }
+
+                    TextButton(
+                        onClick = { viewModel.denyTrust() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(strings.syncTrustDeny, color = com.babytracker.ui.theme.TextHint) }
+                }
+            },
+            dismissButton = null
+        )
     }
 
     LaunchedEffect(showSuccessBadge) {
@@ -181,7 +221,8 @@ fun MainScreen(
                             .clip(CircleShape)
                             .background(SurfaceColor)
                             .clickable {
-                                if (syncState is SyncState.Idle || syncState is SyncState.NoDeviceFound || syncState is SyncState.Error) {
+                                if (syncState is SyncState.Idle || syncState is SyncState.NoDeviceFound ||
+                                    syncState is SyncState.Error || syncState is SyncState.AwaitingApproval) {
                                     viewModel.syncNow()
                                 }
                             },

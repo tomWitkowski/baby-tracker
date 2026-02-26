@@ -5,8 +5,10 @@ import androidx.room.Room
 import com.babytracker.data.db.BabyDatabase
 import com.babytracker.data.db.MIGRATION_1_2
 import com.babytracker.data.db.MIGRATION_2_3
+import com.babytracker.data.db.MIGRATION_3_4
 import com.babytracker.data.db.dao.BabyEventDao
 import com.babytracker.data.db.dao.SyncTombstoneDao
+import com.babytracker.data.db.dao.TrustedDeviceDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,7 +27,7 @@ object AppModule {
             context,
             BabyDatabase::class.java,
             "baby_tracker_db"
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build()
     }
 
     @Provides
@@ -38,5 +40,11 @@ object AppModule {
     @Singleton
     fun provideSyncTombstoneDao(database: BabyDatabase): SyncTombstoneDao {
         return database.syncTombstoneDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideTrustedDeviceDao(database: BabyDatabase): TrustedDeviceDao {
+        return database.trustedDeviceDao()
     }
 }
