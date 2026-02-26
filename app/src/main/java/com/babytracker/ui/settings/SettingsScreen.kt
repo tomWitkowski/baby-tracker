@@ -16,8 +16,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import com.babytracker.data.preferences.AppPreferences
@@ -62,10 +68,16 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val strings = LocalStrings.current
+    val context = LocalContext.current
     val savedBabyName by viewModel.babyName.collectAsState()
     val savedLanguage by viewModel.language.collectAsState()
     val savedTheme by viewModel.themeMode.collectAsState()
     val reminderEnabled by viewModel.reminderEnabled.collectAsState()
+
+    // Runtime permission launcher for POST_NOTIFICATIONS (Android 13+)
+    val notifPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* permission granted or denied — system handles the rationale */ }
 
     var nameInput by remember(savedBabyName) { mutableStateOf(savedBabyName) }
     var showSaved by remember { mutableStateOf(false) }
@@ -181,7 +193,16 @@ fun SettingsScreen(
                 Text(strings.reminderEnabledLabel, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
                 Switch(
                     checked = reminderEnabled,
-                    onCheckedChange = { viewModel.setReminderEnabled(it) },
+                    onCheckedChange = { enabled ->
+                        viewModel.setReminderEnabled(enabled)
+                        // On Android 13+ request POST_NOTIFICATIONS if not yet granted
+                        if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                                != PackageManager.PERMISSION_GRANTED) {
+                                notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        }
+                    },
                     colors = SwitchDefaults.colors(checkedThumbColor = SurfaceColor, checkedTrackColor = FeedingColor)
                 )
             }
@@ -205,12 +226,12 @@ fun SettingsScreen(
                 Slider(
                     value = reminderTotalMinutes.toFloat(),
                     onValueChange = {
-                        val snapped = (it / 5).toInt() * 5
+                        val snapped = maxOf(5, (it / 5).toInt() * 5)
                         reminderTotalMinutes = snapped
                         viewModel.setReminderTotalMinutes(snapped)
                     },
-                    valueRange = 30f..480f,
-                    steps = 89,
+                    valueRange = 5f..480f,
+                    steps = 94,
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(activeTrackColor = FeedingColor, thumbColor = FeedingColor)
                 )
