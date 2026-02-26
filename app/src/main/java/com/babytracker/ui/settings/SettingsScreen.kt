@@ -49,6 +49,10 @@ class SettingsViewModel @Inject constructor(
     fun setShowPump(v: Boolean) { prefs.showPump = v }
     fun getShowSpitUp() = prefs.showSpitUp
     fun setShowSpitUp(v: Boolean) { prefs.showSpitUp = v }
+    fun getShowBottleFormula() = prefs.showBottleFormula
+    fun setShowBottleFormula(v: Boolean) { prefs.showBottleFormula = v }
+    fun getShowBottleExpressed() = prefs.showBottleExpressed
+    fun setShowBottleExpressed(v: Boolean) { prefs.showBottleExpressed = v }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,6 +71,8 @@ fun SettingsScreen(
     var showSaved by remember { mutableStateOf(false) }
     var reminderTotalMinutes by remember { mutableIntStateOf(viewModel.getReminderTotalMinutes()) }
     var showBottle by remember { mutableStateOf(viewModel.getShowBottle()) }
+    var showBottleFormula by remember { mutableStateOf(viewModel.getShowBottleFormula()) }
+    var showBottleExpressed by remember { mutableStateOf(viewModel.getShowBottleExpressed()) }
     var showBreast by remember { mutableStateOf(viewModel.getShowBreast()) }
     var showPump by remember { mutableStateOf(viewModel.getShowPump()) }
     var showSpitUp by remember { mutableStateOf(viewModel.getShowSpitUp()) }
@@ -230,6 +236,28 @@ fun SettingsScreen(
                         onCheckedChange = { onChanged(it) },
                         colors = SwitchDefaults.colors(checkedThumbColor = SurfaceColor, checkedTrackColor = color)
                     )
+                }
+                if (label == strings.showBottleOption && showBottle) {
+                    listOf(
+                        strings.showBottleFormulaOption to Pair(showBottleFormula, { v: Boolean -> showBottleFormula = v; viewModel.setShowBottleFormula(v) }),
+                        strings.showBottleExpressedOption to Pair(showBottleExpressed, { v: Boolean -> showBottleExpressed = v; viewModel.setShowBottleExpressed(v) }),
+                    ).forEach { (subLabel, subPair) ->
+                        val (subChecked, subOnChanged) = subPair
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(subLabel, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Switch(
+                                checked = subChecked,
+                                onCheckedChange = { subOnChanged(it) },
+                                colors = SwitchDefaults.colors(checkedThumbColor = SurfaceColor, checkedTrackColor = FeedingColor)
+                            )
+                        }
+                    }
                 }
             }
 

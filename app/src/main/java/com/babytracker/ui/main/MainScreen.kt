@@ -427,27 +427,28 @@ fun MainScreen(
                         showBottle = viewModel.showBottle,
                         showBreast = viewModel.showBreast,
                         showPump = viewModel.showPump,
-                        onBottle = { bottomSheetState = BottomSheetState.BottleTypeOptions },
+                        onBottle = {
+                            val hasFormula = viewModel.showBottleFormula
+                            val hasExpressed = viewModel.showBottleExpressed
+                            when {
+                                hasFormula && hasExpressed -> bottomSheetState = BottomSheetState.BottleTypeOptions
+                                hasFormula -> { mlInput = ""; bottomSheetState = BottomSheetState.BottleMlInput(FeedingSubType.BOTTLE_FORMULA) }
+                                hasExpressed -> { mlInput = ""; bottomSheetState = BottomSheetState.BottleMlInput(FeedingSubType.BOTTLE_EXPRESSED) }
+                                else -> { mlInput = ""; bottomSheetState = BottomSheetState.BottleMlInput(FeedingSubType.BOTTLE) }
+                            }
+                        },
                         onBreast = { bottomSheetState = BottomSheetState.BreastSideOptions },
                         onPump = { bottomSheetState = BottomSheetState.PumpSideOptions },
                         onDismiss = { bottomSheetState = BottomSheetState.Hidden }
                     )
                     BottomSheetState.BottleTypeOptions -> BottleTypeSheet(
+                        showFormula = viewModel.showBottleFormula,
+                        showExpressed = viewModel.showBottleExpressed,
                         onFormula = {
-                            viewModel.logBottleFeeding(FeedingSubType.BOTTLE_FORMULA, null)
-                            showSuccessBadge = strings.formulaSaved
-                            bottomSheetState = BottomSheetState.Hidden
-                        },
-                        onFormulaWithMl = {
                             mlInput = ""
                             bottomSheetState = BottomSheetState.BottleMlInput(FeedingSubType.BOTTLE_FORMULA)
                         },
                         onExpressed = {
-                            viewModel.logBottleFeeding(FeedingSubType.BOTTLE_EXPRESSED, null)
-                            showSuccessBadge = strings.expressedSaved
-                            bottomSheetState = BottomSheetState.Hidden
-                        },
-                        onExpressedWithMl = {
                             mlInput = ""
                             bottomSheetState = BottomSheetState.BottleMlInput(FeedingSubType.BOTTLE_EXPRESSED)
                         },
@@ -660,10 +661,10 @@ fun FeedingSheet(
 
 @Composable
 fun BottleTypeSheet(
+    showFormula: Boolean = true,
+    showExpressed: Boolean = true,
     onFormula: () -> Unit,
-    onFormulaWithMl: () -> Unit,
     onExpressed: () -> Unit,
-    onExpressedWithMl: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val strings = LocalStrings.current
@@ -681,41 +682,26 @@ fun BottleTypeSheet(
         )
         Spacer(modifier = Modifier.height(24.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OptionCard(
-                modifier = Modifier.weight(1f),
-                emoji = "\uD83C\uDF7C",
-                title = strings.bottleFormula,
-                subtitle = strings.quickSave,
-                color = BottleColor,
-                onClick = onFormula
-            )
-            OptionCard(
-                modifier = Modifier.weight(1f),
-                emoji = "\uD83C\uDF7C",
-                title = strings.bottleFormula,
-                subtitle = strings.optionalMl,
-                color = BottleColor,
-                onClick = onFormulaWithMl
-            )
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OptionCard(
-                modifier = Modifier.weight(1f),
-                emoji = "\uD83E\uDED9",
-                title = strings.bottleExpressed,
-                subtitle = strings.quickSave,
-                color = NaturalColor,
-                onClick = onExpressed
-            )
-            OptionCard(
-                modifier = Modifier.weight(1f),
-                emoji = "\uD83E\uDED9",
-                title = strings.bottleExpressed,
-                subtitle = strings.optionalMl,
-                color = NaturalColor,
-                onClick = onExpressedWithMl
-            )
+            if (showFormula) {
+                OptionCard(
+                    modifier = Modifier.weight(1f),
+                    emoji = "\uD83C\uDF7C",
+                    title = strings.bottleFormula,
+                    subtitle = strings.optionalMl,
+                    color = BottleColor,
+                    onClick = onFormula
+                )
+            }
+            if (showExpressed) {
+                OptionCard(
+                    modifier = Modifier.weight(1f),
+                    emoji = "\uD83E\uDED9",
+                    title = strings.bottleExpressed,
+                    subtitle = strings.optionalMl,
+                    color = NaturalColor,
+                    onClick = onExpressed
+                )
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
         TextButton(onClick = onDismiss) {

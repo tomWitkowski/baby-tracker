@@ -71,4 +71,12 @@ class AppPreferences @Inject constructor(
     var showSpitUp: Boolean
         get() = prefs.getBoolean("show_spit_up", true)
         set(value) { prefs.edit().putBoolean("show_spit_up", value).apply() }
+
+    var showBottleFormula: Boolean
+        get() = prefs.getBoolean("show_bottle_formula", true)
+        set(value) { prefs.edit().putBoolean("show_bottle_formula", value).apply() }
+
+    var showBottleExpressed: Boolean
+        get() = prefs.getBoolean("show_bottle_expressed", true)
+        set(value) { prefs.edit().putBoolean("show_bottle_expressed", value).apply() }
 }

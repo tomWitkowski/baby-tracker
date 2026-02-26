@@ -33,6 +33,8 @@ class MainViewModel @Inject constructor(
     val babyName: StateFlow<String> = appPreferences.babyName
 
     val showBottle get() = appPreferences.showBottle
+    val showBottleFormula get() = appPreferences.showBottleFormula
+    val showBottleExpressed get() = appPreferences.showBottleExpressed
     val showBreast get() = appPreferences.showBreast
     val showPump get() = appPreferences.showPump
     val showSpitUp get() = appPreferences.showSpitUp
