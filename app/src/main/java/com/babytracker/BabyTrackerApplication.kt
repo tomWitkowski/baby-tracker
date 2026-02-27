@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import com.babytracker.data.notifications.FeedingReminderReceiver
+import com.babytracker.data.sync.SyncForegroundService
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
@@ -11,6 +12,7 @@ class BabyTrackerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
+        SyncForegroundService.start(this)
     }
 
     private fun createNotificationChannels() {

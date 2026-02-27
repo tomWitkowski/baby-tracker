@@ -41,10 +41,6 @@ class MainViewModel @Inject constructor(
     val showPump get() = appPreferences.showPump
     val showSpitUp get() = appPreferences.showSpitUp
 
-    init {
-        syncManager.start()
-    }
-
     fun logBottleFeeding(subType: FeedingSubType = FeedingSubType.BOTTLE, milliliters: Int?) {
         viewModelScope.launch {
             repository.logFeeding(subType, milliliters)

@@ -16,8 +16,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -756,7 +756,7 @@ fun DashboardEventRow(
     }
 }
 
-// ── Timeline swimlane view (vertical, bottom=00:00, top=23:59) ──────────────
+// ── Timeline swimlane view (horizontal: x=time, rows=event type) ─────────────
 
 @Composable
 fun TimelineView(
@@ -774,10 +774,13 @@ fun TimelineView(
     val scrollState = rememberScrollState()
     val density = LocalDensity.current
 
-    val hourHeight = 56.dp          // height per 1 hour
-    val totalHeight = hourHeight * 24   // 1344.dp total canvas
-    val timeColWidth = 44.dp
-    val dotSize = 26.dp
+    // 2dp per minute → 120dp per hour → 2880dp for full 24h
+    val minWidth = 2.dp
+    val totalWidth = minWidth * 1440f
+    val labelColWidth = 56.dp
+    val headerHeight = 22.dp
+    val bandHeight = 88.dp
+    val dotSize = 28.dp
 
     val feedingEvents = remember(dayEvents) { dayEvents.filter { it.eventType == "FEEDING" } }
     val diaperEvents  = remember(dayEvents) { dayEvents.filter { it.eventType == "DIAPER" } }
@@ -792,11 +795,11 @@ fun TimelineView(
         }
     }
 
-    // Scroll so that the current time (today) or the last event is visible near the top
+    // Auto-scroll: show current time (today) or the most recent event hour
     LaunchedEffect(isToday, scrollState.maxValue) {
         if (scrollState.maxValue > 0) {
-            val cal = Calendar.getInstance()
             val minOfDay = if (isToday) {
+                val cal = Calendar.getInstance()
                 cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
             } else {
                 dayEvents.maxOfOrNull { e ->
@@ -805,10 +808,8 @@ fun TimelineView(
                     }
                 } ?: 720
             }
-            // Y from top: 23:59 → y≈0 (top), 00:00 → y=totalHeight (bottom)
-            val totalPx = with(density) { totalHeight.roundToPx() }
-            val yFromTop = ((1f - minOfDay / 1440f) * totalPx - 300).toInt().coerceAtLeast(0)
-            scrollState.scrollTo(yFromTop)
+            val xPx = with(density) { (minWidth * minOfDay.toFloat()).roundToPx() }
+            scrollState.scrollTo((xPx - 400).coerceAtLeast(0))
         }
     }
 
@@ -840,125 +841,126 @@ fun TimelineView(
 
         Spacer(Modifier.height(8.dp))
 
-        // Fixed lane header row: one icon+label per event type
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = timeColWidth + 16.dp, end = 16.dp, bottom = 4.dp)
-        ) {
-            lanes.forEach { (emoji, label, pair) ->
-                val (color, _) = pair
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(emoji, fontSize = 18.sp)
-                    Text(label, style = MaterialTheme.typography.labelSmall, color = color, textAlign = TextAlign.Center)
-                }
-            }
-        }
-
-        HorizontalDivider(color = DividerColor)
-
         if (dayEvents.isEmpty()) {
             Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
                 Text(strings.noEventsThisDay, style = MaterialTheme.typography.bodyLarge, color = TextHint)
             }
         } else {
-            // Scrollable vertical canvas
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(totalHeight)
-                        .padding(horizontal = 16.dp)
-                ) {
-                    // Hour tick lines (top=23:59, bottom=00:00)
-                    // Line at hour H is drawn at y = hourHeight * (24 - H)
-                    // H=23 → y=56dp (near top), H=0 → y=1344dp (bottom)
-                    (0..23).forEach { hour ->
-                        val yPos = hourHeight * (24 - hour).toFloat()
+            // Layout: fixed label column on the left, scrollable grid on the right
+            Row(modifier = Modifier.fillMaxWidth()) {
+
+                // ── Fixed label column ────────────────────────────────────────
+                Column(modifier = Modifier.width(labelColWidth)) {
+                    // Empty header cell (aligns with the hour-label row)
+                    Box(modifier = Modifier.height(headerHeight))
+                    HorizontalDivider(color = DividerColor)
+                    lanes.forEach { (emoji, label, pair) ->
+                        val (color, _) = pair
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(if (hour % 3 == 0) 1.dp else 0.5.dp)
-                                .offset(y = yPos)
-                                .padding(start = timeColWidth)
-                                .background(if (hour % 3 == 0) DividerColor else DividerColor.copy(alpha = 0.35f))
-                        )
+                                .height(bandHeight)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(emoji, fontSize = 17.sp)
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = color,
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 9.sp,
+                                    maxLines = 2
+                                )
+                            }
+                        }
+                        HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
                     }
+                }
 
-                    // Time labels every 3 hours
-                    (0..23 step 3).forEach { hour ->
-                        val yPos = hourHeight * (24 - hour).toFloat()
-                        Text(
-                            "%02d:00".format(hour),
-                            modifier = Modifier
-                                .width(timeColWidth - 4.dp)
-                                .offset(y = yPos - 8.dp),
-                            textAlign = TextAlign.End,
-                            fontSize = 9.sp,
-                            color = TextHint
-                        )
-                    }
-
-                    // Event lanes — one column per event type
-                    Row(
+                // ── Horizontally scrollable grid ──────────────────────────────
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(scrollState)
+                ) {
+                    // Hour header row
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(start = timeColWidth)
+                            .width(totalWidth)
+                            .height(headerHeight)
                     ) {
-                        lanes.forEach { (_, _, pair) ->
-                            val (laneColor, events) = pair
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                            ) {
-                                // Thin vertical center-line for the lane
+                        (0..23 step 3).forEach { hour ->
+                            Text(
+                                "%02d:00".format(hour),
+                                modifier = Modifier.offset(x = minWidth * (hour * 60).toFloat()),
+                                fontSize = 9.sp,
+                                color = TextHint
+                            )
+                        }
+                    }
+                    HorizontalDivider(color = DividerColor)
+
+                    // One band per event lane
+                    lanes.forEach { (_, _, pair) ->
+                        val (laneColor, events) = pair
+                        Box(
+                            modifier = Modifier
+                                .width(totalWidth)
+                                .height(bandHeight)
+                                .background(laneColor.copy(alpha = 0.04f))
+                        ) {
+                            // Vertical grid lines every 3 hours
+                            (0..23 step 3).forEach { hour ->
                                 Box(
                                     modifier = Modifier
-                                        .width(1.dp)
+                                        .offset(x = minWidth * (hour * 60).toFloat())
+                                        .width(if (hour % 6 == 0) 1.dp else 0.5.dp)
                                         .fillMaxHeight()
-                                        .align(Alignment.TopCenter)
-                                        .background(laneColor.copy(alpha = 0.25f))
+                                        .background(
+                                            if (hour % 6 == 0) DividerColor.copy(alpha = 0.6f)
+                                            else DividerColor.copy(alpha = 0.25f)
+                                        )
                                 )
+                            }
+                            // Thin horizontal center line
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .align(Alignment.Center)
+                                    .background(laneColor.copy(alpha = 0.3f))
+                            )
+                            // Event dots
+                            events.forEach { event ->
+                                val cal = Calendar.getInstance().apply { timeInMillis = event.timestamp }
+                                val minOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+                                val xPos = minWidth * minOfDay.toFloat() - dotSize / 2f
+                                val timeStr = hourFmt.format(Date(event.timestamp))
+                                val (dotEmoji, _, dotColor) = com.babytracker.ui.main.eventDisplayInfo(event, strings)
 
-                                // Event dots positioned by time of day
-                                events.forEach { event ->
-                                    val cal = Calendar.getInstance().apply { timeInMillis = event.timestamp }
-                                    val minOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-                                    // Y from top: T=1380min(23:00)→56dp, T=0min(00:00)→1344dp
-                                    val yPos = hourHeight * (1440f - minOfDay) / 60f - dotSize / 2
-                                    val timeStr = hourFmt.format(Date(event.timestamp))
-                                    val (dotEmoji, _, dotColor) = com.babytracker.ui.main.eventDisplayInfo(event, strings)
-
-                                    Column(
+                                Column(
+                                    modifier = Modifier
+                                        .align(Alignment.CenterStart)
+                                        .offset(x = xPos.coerceAtLeast(0.dp))
+                                        .clickable { onEdit(event) },
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
                                         modifier = Modifier
-                                            .align(Alignment.TopCenter)
-                                            .offset(y = yPos)
-                                            .clickable { onEdit(event) },
-                                        horizontalAlignment = Alignment.CenterHorizontally
+                                            .size(dotSize)
+                                            .clip(CircleShape)
+                                            .background(dotColor.copy(alpha = 0.18f))
+                                            .border(1.5.dp, dotColor, CircleShape),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(dotSize)
-                                                .clip(CircleShape)
-                                                .background(dotColor.copy(alpha = 0.18f))
-                                                .border(1.5.dp, dotColor, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(dotEmoji, fontSize = 11.sp)
-                                        }
-                                        Text(timeStr, fontSize = 8.sp, color = TextSecondary)
+                                        Text(dotEmoji, fontSize = 12.sp)
                                     }
+                                    Text(timeStr, fontSize = 8.sp, color = TextSecondary)
                                 }
                             }
                         }
+                        HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
                     }
                 }
             }
