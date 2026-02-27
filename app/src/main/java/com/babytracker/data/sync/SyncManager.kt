@@ -28,6 +28,9 @@ import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
 import java.io.PrintWriter
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -62,8 +65,11 @@ class SyncManager @Inject constructor(
         private const val TAG = "SyncManager"
         private const val SERVICE_TYPE = "_babytracker._tcp."
         private const val PORT = 47654
+        private const val UDP_PORT = 47655          // UDP broadcast discovery port
         private const val DISCOVERY_TIMEOUT_MS = 8000L
         private const val RESULT_DISPLAY_MS = 3000L
+        private const val UDP_INTERVAL_MS = 25_000L  // announce every 25 s
+        private const val NSD_RETRY_DELAY_MS = 10_000L
 
         // Socket timeouts
         private const val SOCKET_CONNECT_TIMEOUT_MS = 5_000
@@ -110,40 +116,73 @@ class SyncManager @Inject constructor(
         }
     }
 
-    private var serverSocket: ServerSocket? = null
+    // ── Sockets / NSD handles ─────────────────────────────────────────────────
+
+    @Volatile private var serverSocket: ServerSocket? = null
+    @Volatile private var udpSocket: DatagramSocket? = null
     private var nsdManager: NsdManager? = null
     private var discoveryListener: NsdManager.DiscoveryListener? = null
     private var registrationListener: NsdManager.RegistrationListener? = null
 
     @Volatile private var registeredServiceName: String? = null
+
+    /**
+     * Last known IP/port of a peer, set by UDP discovery (primary) or NSD (fallback).
+     * Cleared after a failed connection attempt so stale IPs don't block future syncs.
+     */
     @Volatile private var discoveredHost: String? = null
     @Volatile private var discoveredPort: Int = PORT
 
     @Volatile private var isStarted = false
 
+    // =========================================================================
+    // Public entry point — idempotent, restart-safe
+    // =========================================================================
+
     fun start() {
-        if (isStarted) return
-        isStarted = true
+        synchronized(this) {
+            // Already running and server socket alive → nothing to do
+            if (isStarted && serverSocket?.isClosed == false) return
+            // Close stale sockets before reinit (handles service-restart scenario)
+            serverSocket?.runCatching { close() }
+            udpSocket?.runCatching { close() }
+            isStarted = true
+        }
         startServer()
-        startNsd()
+        startUdpDiscovery()   // primary discovery — reliable
+        startNsd()            // secondary discovery — unreliable but adds coverage
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // TCP server
-    // -------------------------------------------------------------------------
+    // =========================================================================
 
     private fun startServer() {
         scope.launch {
-            try {
-                serverSocket = ServerSocket(PORT)
-                Log.d(TAG, "TCP server started on port $PORT")
-                while (true) {
-                    val client = serverSocket?.accept() ?: break
-                    launch { handleIncomingConnection(client) }
+            // Retry up to 3 times; BindException can happen if the old socket
+            // is still in TIME_WAIT right after a service restart.
+            repeat(3) { attempt ->
+                if (attempt > 0) delay(2_000L * attempt)
+                try {
+                    serverSocket = ServerSocket().apply {
+                        reuseAddress = true   // allow rapid port reuse after restart
+                        bind(InetSocketAddress(PORT))
+                    }
+                    Log.d(TAG, "TCP server started on port $PORT")
+                    while (!serverSocket!!.isClosed) {
+                        val client = try {
+                            serverSocket?.accept()
+                        } catch (e: Exception) {
+                            null
+                        } ?: break
+                        launch { handleIncomingConnection(client) }
+                    }
+                    return@launch
+                } catch (e: Exception) {
+                    Log.e(TAG, "TCP server start error (attempt ${attempt + 1}): ${e.message}")
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Server error: ${e.message}")
             }
+            Log.e(TAG, "TCP server failed to start after 3 attempts")
         }
     }
 
@@ -158,8 +197,6 @@ class SyncManager @Inject constructor(
                 val received = SyncMessage.fromJson(json)
 
                 // ── Trust check ──────────────────────────────────────────────
-                // Allow only: ourselves (same UUID), session-approved IDs, or
-                // permanently trusted IDs stored in DB.
                 val isOwnDevice = received.deviceId == deviceId
                 val isSessionTrusted = received.deviceId in sessionTrustedIds
                 val isDbTrusted = trustedDeviceDao.isTrusted(received.deviceId) > 0
@@ -178,7 +215,6 @@ class SyncManager @Inject constructor(
                 }
                 // ─────────────────────────────────────────────────────────────
 
-                // Validate limits before processing to prevent bulk-deletion attacks
                 if (received.events.size > MAX_EVENTS_PER_SYNC ||
                     received.tombstones.size > MAX_TOMBSTONES_PER_SYNC) {
                     Log.w(TAG, "Server: rejected oversized sync from ${received.deviceId}")
@@ -187,7 +223,6 @@ class SyncManager @Inject constructor(
 
                 Log.d(TAG, "Server: received ${received.events.size} events, ${received.tombstones.size} tombstones from ${received.deviceId}")
 
-                // Merge their data, then send back our current state (post-merge)
                 mergeReceivedData(received)
                 if (received.babyName.isNotEmpty()) prefs.setBabyName(received.babyName)
 
@@ -204,11 +239,6 @@ class SyncManager @Inject constructor(
 
     // ── Trust management ─────────────────────────────────────────────────────
 
-    /**
-     * Called from UI when user approves an incoming trust request.
-     * @param permanent if true, the device is stored in DB and trusted permanently;
-     *                  if false, trusted only for this app session.
-     */
     suspend fun approveTrust(permanent: Boolean) {
         val request = _pendingTrustRequest.value ?: return
         sessionTrustedIds.add(request.deviceId)
@@ -227,23 +257,119 @@ class SyncManager @Inject constructor(
         _pendingTrustRequest.value = null
     }
 
-    /** Called from UI when user denies the trust request. */
     fun denyTrust() {
         val request = _pendingTrustRequest.value
         Log.i(TAG, "Trust denied for ${request?.deviceName} (${request?.deviceId})")
         _pendingTrustRequest.value = null
     }
 
-    // -------------------------------------------------------------------------
-    // NSD (mDNS service discovery)
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // UDP broadcast discovery — PRIMARY mechanism
+    //
+    // Why: Android's NSD/mDNS stack is notoriously unreliable (service not
+    // found, resolution failure, silent stops). UDP broadcast works at the
+    // data-link layer and is far more consistent on home WiFi networks.
+    //
+    // Requires WifiManager.MulticastLock in the foreground service so that
+    // Android's WiFi driver does not filter out broadcast packets.
+    // =========================================================================
+
+    private fun startUdpDiscovery() {
+        scope.launch {
+            try {
+                udpSocket?.runCatching { close() }
+                udpSocket = DatagramSocket(null).apply {
+                    reuseAddress = true   // allow restart binding to the same port
+                    broadcast = true
+                    bind(InetSocketAddress(UDP_PORT))
+                }
+                Log.d(TAG, "UDP discovery listening on port $UDP_PORT")
+                launch { listenForUdpAnnouncements() }
+                launch { sendPeriodicAnnouncements() }
+            } catch (e: Exception) {
+                Log.e(TAG, "UDP discovery setup error: ${e.message}. Retrying in 10s…")
+                delay(10_000)
+                startUdpDiscovery()
+            }
+        }
+    }
+
+    private suspend fun listenForUdpAnnouncements() {
+        val buffer = ByteArray(2048)
+        while (true) {
+            val socket = udpSocket
+            if (socket == null || socket.isClosed) break
+            try {
+                val packet = DatagramPacket(buffer, buffer.size)
+                withContext(Dispatchers.IO) { socket.receive(packet) }
+                val json = String(packet.data, 0, packet.length).trim()
+                val obj = try { JSONObject(json) } catch (_: Exception) { continue }
+                val remoteId = obj.optString("deviceId")
+                if (remoteId.isNotEmpty() && remoteId != deviceId) {
+                    val ip = packet.address.hostAddress
+                    val tcpPort = obj.optInt("tcpPort", PORT)
+                    Log.d(TAG, "UDP: peer $remoteId at $ip:$tcpPort")
+                    discoveredHost = ip
+                    discoveredPort = tcpPort
+                }
+            } catch (e: Exception) {
+                if (udpSocket?.isClosed == true) break
+                Log.w(TAG, "UDP receive error: ${e.message}")
+                delay(1_000)
+            }
+        }
+        Log.d(TAG, "UDP listener exited")
+    }
+
+    private suspend fun sendPeriodicAnnouncements() {
+        while (udpSocket?.isClosed == false) {
+            doSendUdpAnnouncement()
+            delay(UDP_INTERVAL_MS)
+        }
+    }
+
+    /** Public: called from syncNow() to prompt the peer to announce itself. */
+    fun sendUdpAnnouncement() {
+        scope.launch { doSendUdpAnnouncement() }
+    }
+
+    private suspend fun doSendUdpAnnouncement() {
+        val socket = udpSocket
+        if (socket == null || socket.isClosed) return
+        try {
+            val msg = JSONObject()
+                .put("deviceId", deviceId)
+                .put("tcpPort", PORT)
+                .toString()
+                .toByteArray(Charsets.UTF_8)
+            val packet = DatagramPacket(msg, msg.size, InetAddress.getByName("255.255.255.255"), UDP_PORT)
+            withContext(Dispatchers.IO) { socket.send(packet) }
+            Log.d(TAG, "UDP: announcement sent")
+        } catch (e: Exception) {
+            Log.w(TAG, "UDP announce error: ${e.message}")
+        }
+    }
+
+    // =========================================================================
+    // NSD (mDNS) — SECONDARY / backup mechanism
+    //
+    // NSD is kept as a fallback for networks where UDP broadcasts are blocked
+    // (some managed/enterprise WiFi). We restart it on every failure because
+    // the Android NSD stack can stop discovery silently.
+    // onServiceLost does NOT clear discoveredHost — UDP is still valid.
+    // =========================================================================
 
     private fun startNsd() {
         nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
 
         registrationListener = object : NsdManager.RegistrationListener {
             override fun onRegistrationFailed(info: NsdServiceInfo, code: Int) {
-                Log.e(TAG, "NSD registration failed: $code")
+                Log.e(TAG, "NSD registration failed: $code, retry in ${NSD_RETRY_DELAY_MS}ms")
+                scope.launch {
+                    delay(NSD_RETRY_DELAY_MS)
+                    safeUnregisterNsd()
+                    startNsd()
+                }
             }
             override fun onUnregistrationFailed(info: NsdServiceInfo, code: Int) {}
             override fun onServiceRegistered(info: NsdServiceInfo) {
@@ -257,32 +383,39 @@ class SyncManager @Inject constructor(
             override fun onDiscoveryStarted(type: String) {
                 Log.d(TAG, "NSD discovery started")
             }
-            override fun onDiscoveryStopped(type: String) {}
+            override fun onDiscoveryStopped(type: String) {
+                Log.w(TAG, "NSD discovery stopped, restarting in ${NSD_RETRY_DELAY_MS}ms")
+                scope.launch { delay(NSD_RETRY_DELAY_MS); startNsd() }
+            }
             override fun onStartDiscoveryFailed(type: String, code: Int) {
-                Log.e(TAG, "NSD discovery start failed: $code")
+                Log.e(TAG, "NSD discovery start failed: $code, restarting…")
+                scope.launch { delay(NSD_RETRY_DELAY_MS); startNsd() }
             }
             override fun onStopDiscoveryFailed(type: String, code: Int) {}
 
             override fun onServiceFound(service: NsdServiceInfo) {
-                if (service.serviceName == registeredServiceName) return // skip ourselves
-                Log.d(TAG, "Found service: ${service.serviceName}")
+                if (service.serviceName == registeredServiceName) return
+                Log.d(TAG, "NSD: found service: ${service.serviceName}")
                 nsdManager?.resolveService(service, object : NsdManager.ResolveListener {
                     override fun onResolveFailed(info: NsdServiceInfo, code: Int) {
-                        Log.e(TAG, "Resolve failed: $code")
+                        Log.e(TAG, "NSD: resolve failed: $code")
                     }
                     override fun onServiceResolved(info: NsdServiceInfo) {
-                        Log.d(TAG, "Resolved: ${info.host.hostAddress}:${info.port}")
-                        discoveredHost = info.host.hostAddress
-                        discoveredPort = info.port
+                        val ip = info.host?.hostAddress ?: return
+                        Log.d(TAG, "NSD: resolved to $ip:${info.port}")
+                        // Only update if UDP hasn't already found someone
+                        if (discoveredHost == null) {
+                            discoveredHost = ip
+                            discoveredPort = info.port
+                        }
                     }
                 })
             }
 
             override fun onServiceLost(service: NsdServiceInfo) {
-                if (service.serviceName != registeredServiceName) {
-                    Log.d(TAG, "Service lost: ${service.serviceName}")
-                    discoveredHost = null
-                }
+                // Do NOT clear discoveredHost here. NSD fires this spuriously
+                // (e.g. after screen-off/on) while UDP still knows the IP.
+                Log.d(TAG, "NSD: service lost: ${service.serviceName} (keeping cached host)")
             }
         }
 
@@ -296,19 +429,30 @@ class SyncManager @Inject constructor(
             nsdManager!!.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, registrationListener)
             nsdManager!!.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener)
         } catch (e: Exception) {
-            Log.e(TAG, "NSD setup error: ${e.message}")
+            Log.e(TAG, "NSD setup error: ${e.message}, retry in ${NSD_RETRY_DELAY_MS}ms")
+            scope.launch { delay(NSD_RETRY_DELAY_MS); startNsd() }
         }
     }
 
-    // -------------------------------------------------------------------------
+    private fun safeUnregisterNsd() {
+        try { nsdManager?.unregisterService(registrationListener) } catch (_: Exception) {}
+        try { nsdManager?.stopServiceDiscovery(discoveryListener) } catch (_: Exception) {}
+    }
+
+    // =========================================================================
     // Client-initiated sync
-    // -------------------------------------------------------------------------
+    // =========================================================================
 
     suspend fun syncNow() {
         val current = _syncState.value
         if (current is SyncState.Syncing || current is SyncState.Searching) return
 
         _syncState.value = SyncState.Searching
+
+        // Announce ourselves via UDP — this causes the peer to also send its
+        // UDP announcement back, so both devices discover each other quickly
+        // even if NSD failed or if the peer just came online.
+        sendUdpAnnouncement()
 
         val host = withTimeoutOrNull(DISCOVERY_TIMEOUT_MS) {
             while (discoveredHost == null) {
@@ -374,40 +518,35 @@ class SyncManager @Inject constructor(
             when {
                 changes == null -> {
                     Log.w(TAG, "Sync timed out after ${SYNC_TOTAL_TIMEOUT_MS}ms")
-                    _syncState.value = SyncState.Error("Przekroczono limit czasu synchronizacji")
+                    // Clear stale host so next attempt forces rediscovery
+                    discoveredHost = null
+                    _syncState.value = SyncState.Error("Sync timed out")
                 }
                 changes == -1 -> _syncState.value = SyncState.AwaitingApproval
                 else -> _syncState.value = SyncState.Success(changes)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Sync error: ${e.message}")
-            _syncState.value = SyncState.Error(e.message ?: "Błąd połączenia")
+            // Connection refused / network error → stale IP, force rediscovery
+            discoveredHost = null
+            _syncState.value = SyncState.Error(e.message ?: "Connection error")
         }
 
         delay(RESULT_DISPLAY_MS)
         _syncState.value = SyncState.Idle
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Merge logic
-    // -------------------------------------------------------------------------
+    // =========================================================================
 
     /**
      * Merges received data into local DB.
      *
      * Rules:
      * 1. Tombstones (deletions) are applied first — deletion always wins.
-     *    This ensures that a deletion on one device propagates to the other,
-     *    even if the other device was offline when the deletion happened.
-     *
      * 2. For events: insert if new, update if the received version is newer (updatedAt).
      *    Skip if the event is locally tombstoned (we deleted it).
-     *    This "last write wins" strategy means offline edits are preserved as long as
-     *    the device clock is roughly accurate relative to the partner device.
-     *
-     * Offline scenario guarantee: events added offline on either device will be
-     * inserted on the other device during the next sync. No offline data is lost
-     * unless one device explicitly deleted it (tombstone).
      *
      * Returns count of local DB rows changed.
      */
@@ -429,7 +568,6 @@ class SyncManager @Inject constructor(
             }
             if (tombstoneDao.countBySyncId(event.syncId) > 0) return@forEach
 
-            // Sanitize note length before persisting
             val safeEvent = if (event.note != null && event.note.length > MAX_NOTE_LENGTH) {
                 event.copy(note = event.note.take(MAX_NOTE_LENGTH))
             } else {
@@ -446,20 +584,18 @@ class SyncManager @Inject constructor(
                     dao.updateEvent(safeEvent.copy(id = existing.id))
                     changes++
                 }
-                // else: our version is equal or newer — keep it
             }
         }
 
         return changes
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Helpers
-    // -------------------------------------------------------------------------
+    // =========================================================================
 
     /**
      * Reads a single line from [reader] but aborts if the payload exceeds [maxBytes].
-     * This prevents OOM attacks from a malformed device sending an unbounded stream.
      */
     @Throws(IOException::class)
     private fun readLimitedLine(reader: BufferedReader, maxBytes: Int = MAX_JSON_BYTES): String? {
@@ -477,8 +613,6 @@ class SyncManager @Inject constructor(
 
     /**
      * Returns true only if the event carries known enum values.
-     * Rejects events with unknown types to prevent crashes in the rest of the app
-     * (e.g. EventType.valueOf() would throw on an unknown string).
      */
     private fun isValidEvent(event: com.babytracker.data.db.entity.BabyEvent): Boolean {
         if (event.eventType !in VALID_EVENT_TYPES) return false
