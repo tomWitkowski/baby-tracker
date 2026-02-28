@@ -69,6 +69,8 @@ class SettingsViewModel @Inject constructor(
     fun hasTrialStarted() = prefs.hasTrialStarted()
     /** Debug only: expire trial immediately so expiry behaviour can be tested. */
     fun debugExpireTrial() { if (prefs.hasTrialStarted()) prefs.proTrialExpiryMs = System.currentTimeMillis() - 1000L }
+    /** Debug only: activate Pro without purchase (for testing post-purchase flow). */
+    fun debugActivatePro() { prefs.isPro = true }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -92,6 +94,7 @@ fun SettingsScreen(
     var nameInput by remember(savedBabyName) { mutableStateOf(savedBabyName) }
     var showSaved by remember { mutableStateOf(false) }
     var showProDialog by remember { mutableStateOf(false) }
+    var showUpgradeInfoDialog by remember { mutableStateOf(false) }
     var proIsActive by remember { mutableStateOf(viewModel.isProOrTrial()) }
     var reminderTotalMinutes by remember { mutableIntStateOf(viewModel.getReminderTotalMinutes()) }
     var showBottle by remember { mutableStateOf(viewModel.getShowBottle()) }
@@ -127,6 +130,20 @@ fun SettingsScreen(
                 TextButton(onClick = { showProDialog = false }) {
                     Text(strings.proRequiredCancel, color = TextHint)
                 }
+            }
+        )
+    }
+
+    if (showUpgradeInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showUpgradeInfoDialog = false },
+            title = { Text(strings.proRequiredTitle, fontWeight = FontWeight.Bold) },
+            text = { Text(strings.proTrialExpiredBody) },
+            confirmButton = {
+                Button(
+                    onClick = { showUpgradeInfoDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = FeedingColor)
+                ) { Text(strings.proRequiredCancel, fontWeight = FontWeight.SemiBold) }
             }
         )
     }
@@ -188,7 +205,18 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(strings.proSectionTitle, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text(
+                            strings.proSectionTitle,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary,
+                            modifier = Modifier.combinedClickable(
+                                onClick = {},
+                                onLongClick = {
+                                    viewModel.debugActivatePro()
+                                    proIsActive = viewModel.isProOrTrial()
+                                }
+                            )
+                        )
                         Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = if (proIsActive) FeedingColor else TextHint.copy(alpha = 0.2f),
@@ -218,6 +246,8 @@ fun SettingsScreen(
                                 if (!viewModel.hasTrialStarted()) {
                                     viewModel.startTrial()
                                     proIsActive = true
+                                } else {
+                                    showUpgradeInfoDialog = true
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),

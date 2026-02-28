@@ -114,18 +114,29 @@ fun MainScreen(
     }
 
     if (showProRequiredDialog) {
+        val trialAlreadyUsed = viewModel.hasTrialStarted()
         AlertDialog(
             onDismissRequest = { showProRequiredDialog = false },
             title = { Text(strings.proRequiredTitle, fontWeight = FontWeight.Bold) },
-            text = { Text(strings.proRequiredBody) },
+            text = { Text(if (trialAlreadyUsed) strings.proTrialExpiredBody else strings.proRequiredBody) },
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.startTrial()
-                        showProRequiredDialog = false
+                        if (trialAlreadyUsed) {
+                            showProRequiredDialog = false
+                            onNavigateToSettings()
+                        } else {
+                            viewModel.startTrial()
+                            showProRequiredDialog = false
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = com.babytracker.ui.theme.FeedingColor)
-                ) { Text(strings.proRequiredStart, fontWeight = FontWeight.SemiBold) }
+                ) {
+                    Text(
+                        if (trialAlreadyUsed) strings.proUpgradeCta else strings.proRequiredStart,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showProRequiredDialog = false }) {

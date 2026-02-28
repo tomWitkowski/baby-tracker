@@ -171,6 +171,7 @@ data class AppStrings(
     val proUpgradeCta: String,
     val proRequiredTitle: String,
     val proRequiredBody: String,
+    val proTrialExpiredBody: String,
     val proRequiredStart: String,
     val proRequiredCancel: String,
 )
@@ -320,6 +321,7 @@ val PolishStrings = AppStrings(
     proUpgradeCta = "Ulepsz do Pro",
     proRequiredTitle = "Maluszek Pro",
     proRequiredBody = "Sync i powiadomienia wymagają Pro.\nWypróbuj 3 dni za darmo, bez karty kredytowej.",
+    proTrialExpiredBody = "Twój trial wygasł. Kup Maluszek Pro aby dalej synchronizować i korzystać z powiadomień.",
     proRequiredStart = "Zacznij trial",
     proRequiredCancel = "Może później",
 )
@@ -469,6 +471,7 @@ val EnglishStrings = AppStrings(
     proUpgradeCta = "Upgrade to Pro",
     proRequiredTitle = "Maluszek Pro",
     proRequiredBody = "Sync & reminders require Pro.\nTry 3 days free, no credit card needed.",
+    proTrialExpiredBody = "Your trial has expired. Buy Maluszek Pro to keep sync & reminders.",
     proRequiredStart = "Start trial",
     proRequiredCancel = "Maybe later",
 )
@@ -595,6 +598,7 @@ val SpanishStrings = AppStrings(
     proUpgradeCta = "Actualizar a Pro",
     proRequiredTitle = "Maluszek Pro",
     proRequiredBody = "Sync y recordatorios requieren Pro.\n3 días gratis, sin tarjeta.",
+    proTrialExpiredBody = "Tu prueba ha caducado. Compra Maluszek Pro para continuar.",
     proRequiredStart = "Iniciar prueba",
     proRequiredCancel = "Quizás después",
 )
@@ -668,6 +672,7 @@ val FrenchStrings = AppStrings(
     proUpgradeCta = "Passer à Pro",
     proRequiredTitle = "Maluszek Pro",
     proRequiredBody = "Sync et rappels nécessitent Pro.\n3 jours gratuits, sans carte.",
+    proTrialExpiredBody = "Votre essai a expiré. Achetez Maluszek Pro pour continuer.",
     proRequiredStart = "Commencer l'essai",
     proRequiredCancel = "Plus tard",
 )
@@ -741,6 +746,7 @@ val ItalianStrings = AppStrings(
     proUpgradeCta = "Passa a Pro",
     proRequiredTitle = "Maluszek Pro",
     proRequiredBody = "Sync e promemoria richiedono Pro.\n3 giorni gratis, senza carta.",
+    proTrialExpiredBody = "La prova è scaduta. Acquista Maluszek Pro per continuare.",
     proRequiredStart = "Inizia prova",
     proRequiredCancel = "Forse dopo",
 )
@@ -814,6 +820,7 @@ val GermanStrings = AppStrings(
     proUpgradeCta = "Auf Pro upgraden",
     proRequiredTitle = "Maluszek Pro",
     proRequiredBody = "Sync und Erinnerungen erfordern Pro.\n3 Tage kostenlos, ohne Karte.",
+    proTrialExpiredBody = "Dein Test ist abgelaufen. Kaufe Maluszek Pro um weiterzumachen.",
     proRequiredStart = "Test starten",
     proRequiredCancel = "Vielleicht später",
 )

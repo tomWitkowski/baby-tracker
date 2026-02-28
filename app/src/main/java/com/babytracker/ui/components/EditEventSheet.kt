@@ -183,8 +183,36 @@ fun EditEventSheet(
             Spacer(Modifier.height(8.dp))
 
             if (editedEventType == EventType.FEEDING) {
-                val isPumpEvent = event.subType?.startsWith("PUMP") == true
-                if (!isPumpEvent) {
+                var isPumpMode by remember { mutableStateOf(event.subType?.startsWith("PUMP") == true) }
+
+                // Toggle: Feeding ↔ Pump
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(false to strings.feedingLabel, true to strings.pump).forEach { (pumpFlag, label) ->
+                        val selected = isPumpMode == pumpFlag
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (selected) NaturalColor.copy(alpha = 0.15f) else SurfaceColor,
+                            tonalElevation = if (selected) 0.dp else 1.dp,
+                            onClick = {
+                                isPumpMode = pumpFlag
+                                editedSubType = if (pumpFlag) FeedingSubType.PUMP_LEFT.name else FeedingSubType.BOTTLE.name
+                                editedMilliliters = ""
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                label,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (selected) NaturalColor else TextSecondary
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+
+                if (!isPumpMode) {
                     // Row 1: Bottle types
                     SubTypeRow(
                         items = listOf(
