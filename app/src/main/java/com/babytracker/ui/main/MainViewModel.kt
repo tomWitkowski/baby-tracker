@@ -97,4 +97,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun denyTrust() = syncManager.denyTrust()
+
+    fun isProOrTrial() = appPreferences.isProOrTrial()
+    fun startTrial() { appPreferences.startTrial() }
 }

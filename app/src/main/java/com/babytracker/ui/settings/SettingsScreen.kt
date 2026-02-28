@@ -59,6 +59,12 @@ class SettingsViewModel @Inject constructor(
     fun setShowBottleFormula(v: Boolean) { prefs.showBottleFormula = v }
     fun getShowBottleExpressed() = prefs.showBottleExpressed
     fun setShowBottleExpressed(v: Boolean) { prefs.showBottleExpressed = v }
+
+    val isPro get() = prefs.isPro
+    fun isProOrTrial() = prefs.isProOrTrial()
+    fun startTrial() { prefs.startTrial() }
+    fun trialDaysRemaining() = prefs.trialDaysRemaining()
+    fun hasTrialStarted() = prefs.hasTrialStarted()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,6 +87,8 @@ fun SettingsScreen(
 
     var nameInput by remember(savedBabyName) { mutableStateOf(savedBabyName) }
     var showSaved by remember { mutableStateOf(false) }
+    var showProDialog by remember { mutableStateOf(false) }
+    var proIsActive by remember { mutableStateOf(viewModel.isProOrTrial()) }
     var reminderTotalMinutes by remember { mutableIntStateOf(viewModel.getReminderTotalMinutes()) }
     var showBottle by remember { mutableStateOf(viewModel.getShowBottle()) }
     var showBottleFormula by remember { mutableStateOf(viewModel.getShowBottleFormula()) }
@@ -94,6 +102,29 @@ fun SettingsScreen(
             kotlinx.coroutines.delay(2000)
             showSaved = false
         }
+    }
+
+    if (showProDialog) {
+        AlertDialog(
+            onDismissRequest = { showProDialog = false },
+            title = { Text(strings.proRequiredTitle, fontWeight = FontWeight.Bold) },
+            text = { Text(strings.proRequiredBody) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.startTrial()
+                        proIsActive = true
+                        showProDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = FeedingColor)
+                ) { Text(strings.proRequiredStart, fontWeight = FontWeight.SemiBold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showProDialog = false }) {
+                    Text(strings.proRequiredCancel, color = TextHint)
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -135,6 +166,60 @@ fun SettingsScreen(
                 )
             )
 
+            // ── Maluszek Pro card ─────────────────────────────────────────────
+            val proStatusText = when {
+                viewModel.isPro -> strings.proStatusPro
+                viewModel.hasTrialStarted() && proIsActive -> String.format(strings.proStatusTrialActiveFmt, viewModel.trialDaysRemaining())
+                viewModel.hasTrialStarted() && !proIsActive -> strings.proStatusTrialExpired
+                else -> strings.proStatusFree
+            }
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = FeedingColor.copy(alpha = 0.06f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(strings.proSectionTitle, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Surface(shape = RoundedCornerShape(8.dp), color = if (proIsActive) FeedingColor else TextHint.copy(alpha = 0.2f)) {
+                            Text(
+                                proStatusText,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (proIsActive) Color.White else TextSecondary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                    Text(strings.proFeatureDesc, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text(strings.proPrice, style = MaterialTheme.typography.bodySmall, color = TextHint)
+                    if (!proIsActive) {
+                        Spacer(Modifier.height(2.dp))
+                        Button(
+                            onClick = {
+                                if (!viewModel.hasTrialStarted()) {
+                                    viewModel.startTrial()
+                                    proIsActive = true
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = FeedingColor)
+                        ) {
+                            Text(
+                                if (!viewModel.hasTrialStarted()) strings.proStartTrialCta else strings.proUpgradeCta,
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            }
+
             // Language
             Text(strings.languageLabel, style = MaterialTheme.typography.labelMedium, color = TextSecondary)
             // Row 1: PL, EN, ES
@@ -143,17 +228,11 @@ fun SettingsScreen(
                 LanguageOption(Modifier.weight(1f), "\uD83C\uDDEC\uD83C\uDDE7", strings.english, savedLanguage == "en") { viewModel.setLanguage("en") }
                 LanguageOption(Modifier.weight(1f), "\uD83C\uDDEA\uD83C\uDDF8", strings.spanish, savedLanguage == "es") { viewModel.setLanguage("es") }
             }
-            // Row 2: FR, IT, UK
+            // Row 2: FR, IT, DE
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 LanguageOption(Modifier.weight(1f), "\uD83C\uDDEB\uD83C\uDDF7", strings.french, savedLanguage == "fr") { viewModel.setLanguage("fr") }
                 LanguageOption(Modifier.weight(1f), "\uD83C\uDDEE\uD83C\uDDF9", strings.italian, savedLanguage == "it") { viewModel.setLanguage("it") }
-                LanguageOption(Modifier.weight(1f), "\uD83C\uDDFA\uD83C\uDDE6", strings.ukrainian, savedLanguage == "uk") { viewModel.setLanguage("uk") }
-            }
-            // Row 3: ZH, DE
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LanguageOption(Modifier.weight(1f), "\uD83C\uDDE8\uD83C\uDDF3", strings.chinese, savedLanguage == "zh") { viewModel.setLanguage("zh") }
                 LanguageOption(Modifier.weight(1f), "\uD83C\uDDE9\uD83C\uDDEA", strings.german, savedLanguage == "de") { viewModel.setLanguage("de") }
-                Spacer(Modifier.weight(1f))
             }
 
             // Theme
@@ -194,12 +273,16 @@ fun SettingsScreen(
                 Switch(
                     checked = reminderEnabled,
                     onCheckedChange = { enabled ->
-                        viewModel.setReminderEnabled(enabled)
-                        // On Android 13+ request POST_NOTIFICATIONS if not yet granted
-                        if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
-                                != PackageManager.PERMISSION_GRANTED) {
-                                notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        if (enabled && !viewModel.isProOrTrial()) {
+                            showProDialog = true
+                        } else {
+                            viewModel.setReminderEnabled(enabled)
+                            // On Android 13+ request POST_NOTIFICATIONS if not yet granted
+                            if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                                    != PackageManager.PERMISSION_GRANTED) {
+                                    notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
                             }
                         }
                     },

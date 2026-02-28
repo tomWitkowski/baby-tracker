@@ -48,6 +48,8 @@ sealed class SyncState {
     object NoDeviceFound : SyncState()
     /** Server rejected our request — waiting for the owner to approve on their phone */
     object AwaitingApproval : SyncState()
+    /** User does not have Pro — sync is gated behind a subscription */
+    object ProRequired : SyncState()
 }
 
 /** Pending trust-approval request from an unknown incoming device */
@@ -446,6 +448,11 @@ class SyncManager @Inject constructor(
     suspend fun syncNow() {
         val current = _syncState.value
         if (current is SyncState.Syncing || current is SyncState.Searching) return
+
+        if (!prefs.isProOrTrial()) {
+            _syncState.value = SyncState.ProRequired
+            return
+        }
 
         _syncState.value = SyncState.Searching
 

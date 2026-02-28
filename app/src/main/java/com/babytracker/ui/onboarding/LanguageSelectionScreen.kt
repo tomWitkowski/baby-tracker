@@ -48,8 +48,6 @@ fun LanguageSelectionScreen(
         Triple("es", "\uD83C\uDDEA\uD83C\uDDF8", "Español"),
         Triple("fr", "\uD83C\uDDEB\uD83C\uDDF7", "Français"),
         Triple("it", "\uD83C\uDDEE\uD83C\uDDF9", "Italiano"),
-        Triple("uk", "\uD83C\uDDFA\uD83C\uDDE6", "Українська"),
-        Triple("zh", "\uD83C\uDDE8\uD83C\uDDF3", "中文"),
         Triple("de", "\uD83C\uDDE9\uD83C\uDDEA", "Deutsch"),
     )
 
@@ -103,12 +101,12 @@ fun LanguageSelectionScreen(
                     )
                 }
             }
-            // Row 2: FR, IT, UK
+            // Row 2: FR, IT, DE
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                languages.subList(3, 6).forEach { (code, flag, label) ->
+                languages.drop(3).forEach { (code, flag, label) ->
                     LanguageCard(
                         modifier = Modifier.weight(1f),
                         flag = flag,
@@ -117,22 +115,6 @@ fun LanguageSelectionScreen(
                         onClick = { selected = code }
                     )
                 }
-            }
-            // Row 3: ZH, DE
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                languages.drop(6).forEach { (code, flag, label) ->
-                    LanguageCard(
-                        modifier = Modifier.weight(1f),
-                        flag = flag,
-                        label = label,
-                        isSelected = selected == code,
-                        onClick = { selected = code }
-                    )
-                }
-                Spacer(Modifier.weight(1f))
             }
 
             Spacer(modifier = Modifier.height(8.dp))

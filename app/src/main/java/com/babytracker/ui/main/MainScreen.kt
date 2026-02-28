@@ -88,6 +88,7 @@ fun MainScreen(
     var pumpMlInput by remember { mutableStateOf("") }
     var pumpSelectedSubType by remember { mutableStateOf(FeedingSubType.PUMP_LEFT) }
     var showSuccessBadge by remember { mutableStateOf<String?>(null) }
+    var showProRequiredDialog by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val listState = rememberLazyListState()
 
@@ -107,8 +108,31 @@ fun MainScreen(
             is SyncState.NoDeviceFound -> showSuccessBadge = strings.syncNoDevice
             is SyncState.Error -> showSuccessBadge = strings.syncError
             is SyncState.AwaitingApproval -> showSuccessBadge = strings.syncAwaitingApproval
+            is SyncState.ProRequired -> showProRequiredDialog = true
             else -> {}
         }
+    }
+
+    if (showProRequiredDialog) {
+        AlertDialog(
+            onDismissRequest = { showProRequiredDialog = false },
+            title = { Text(strings.proRequiredTitle, fontWeight = FontWeight.Bold) },
+            text = { Text(strings.proRequiredBody) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.startTrial()
+                        showProRequiredDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = com.babytracker.ui.theme.FeedingColor)
+                ) { Text(strings.proRequiredStart, fontWeight = FontWeight.SemiBold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showProRequiredDialog = false }) {
+                    Text(strings.proRequiredCancel, color = com.babytracker.ui.theme.TextHint)
+                }
+            }
+        )
     }
 
     // Trust-approval dialog — shown when an unknown device tries to sync with us

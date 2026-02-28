@@ -79,4 +79,32 @@ class AppPreferences @Inject constructor(
     var showBottleExpressed: Boolean
         get() = prefs.getBoolean("show_bottle_expressed", true)
         set(value) { prefs.edit().putBoolean("show_bottle_expressed", value).apply() }
+
+    // ── Pro / subscription ────────────────────────────────────────────────────
+    var isPro: Boolean
+        get() = prefs.getBoolean("is_pro", false)
+        set(value) { prefs.edit().putBoolean("is_pro", value).apply() }
+
+    var proTrialExpiryMs: Long
+        get() = prefs.getLong("pro_trial_expiry_ms", 0L)
+        set(value) { prefs.edit().putLong("pro_trial_expiry_ms", value).apply() }
+
+    fun isProOrTrial(): Boolean {
+        if (isPro) return true
+        val expiry = proTrialExpiryMs
+        return expiry > 0L && System.currentTimeMillis() < expiry
+    }
+
+    /** Starts a 30-day trial; no-op if trial has already been started. */
+    fun startTrial() {
+        if (proTrialExpiryMs == 0L)
+            proTrialExpiryMs = System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000L
+    }
+
+    fun trialDaysRemaining(): Int {
+        val ms = proTrialExpiryMs - System.currentTimeMillis()
+        return maxOf(0, (ms / (24 * 60 * 60 * 1000L)).toInt())
+    }
+
+    fun hasTrialStarted(): Boolean = proTrialExpiryMs > 0L
 }

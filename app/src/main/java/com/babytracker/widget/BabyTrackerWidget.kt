@@ -29,6 +29,8 @@ import com.babytracker.data.db.entity.BabyEvent
 import com.babytracker.data.db.entity.DiaperSubType
 import com.babytracker.data.db.entity.EventType
 import com.babytracker.data.db.entity.FeedingSubType
+import com.babytracker.ui.i18n.AppStrings
+import com.babytracker.ui.i18n.stringsForLang
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -36,14 +38,17 @@ val WIDGET_ACTION_KEY = ActionParameters.Key<String>("action")
 
 class BabyTrackerWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val lang = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            .getString("language", "pl") ?: "pl"
+        val strings = stringsForLang(lang)
         provideContent {
-            WidgetContent()
+            WidgetContent(strings)
         }
     }
 }
 
 @Composable
-fun WidgetContent() {
+fun WidgetContent(strings: AppStrings) {
     GlanceTheme {
         Box(
             modifier = GlanceModifier
@@ -60,7 +65,7 @@ fun WidgetContent() {
                 WidgetActionButton(
                     modifier = GlanceModifier.defaultWeight(),
                     emoji = "\uD83C\uDF7C",
-                    label = "Karmienie",
+                    label = strings.feeding,
                     bgColor = Color(0x26FF7B7B),
                     action = actionRunCallback<WidgetFeedingAction>(
                         actionParametersOf(WIDGET_ACTION_KEY to "feeding")
@@ -70,7 +75,7 @@ fun WidgetContent() {
                 WidgetActionButton(
                     modifier = GlanceModifier.defaultWeight(),
                     emoji = "\uD83E\uDE72",
-                    label = "Pieluszka",
+                    label = strings.diaper,
                     bgColor = Color(0x264ECDC4),
                     action = actionRunCallback<WidgetDiaperAction>(
                         actionParametersOf(WIDGET_ACTION_KEY to "diaper")
