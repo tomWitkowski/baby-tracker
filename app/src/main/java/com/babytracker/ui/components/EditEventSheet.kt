@@ -183,66 +183,68 @@ fun EditEventSheet(
             Spacer(Modifier.height(8.dp))
 
             if (editedEventType == EventType.FEEDING) {
-                // Row 1: Bottle types
-                SubTypeRow(
-                    items = listOf(
-                        SubTypeItem(FeedingSubType.BOTTLE.name, "\uD83C\uDF7C", strings.bottle, BottleColor),
-                        SubTypeItem(FeedingSubType.BOTTLE_FORMULA.name, "\uD83C\uDF7C", strings.bottleFormula, BottleColor),
-                        SubTypeItem(FeedingSubType.BOTTLE_EXPRESSED.name, "\uD83E\uDD3C", strings.bottleExpressed, NaturalColor)
-                    ),
-                    selectedSubType = editedSubType,
-                    onSelect = { editedSubType = it }
-                )
-                Spacer(Modifier.height(8.dp))
-                // Row 2: Breast left / right
-                SubTypeRow(
-                    items = listOf(
-                        SubTypeItem(FeedingSubType.BREAST_LEFT.name, "\u2B05\uFE0F", strings.breastLeft, NaturalColor),
-                        SubTypeItem(FeedingSubType.BREAST_RIGHT.name, "\u27A1\uFE0F", strings.breastRight, NaturalColor)
-                    ),
-                    selectedSubType = editedSubType,
-                    onSelect = { editedSubType = it }
-                )
-                Spacer(Modifier.height(8.dp))
-                // Row 3: Breast both
-                SubTypeRow(
-                    items = listOf(
-                        SubTypeItem(FeedingSubType.BREAST_BOTH_LR.name, "\u2194\uFE0F", "${strings.breastLeft}\u2192${strings.breastRight}", NaturalColor),
-                        SubTypeItem(FeedingSubType.BREAST_BOTH_RL.name, "\u2194\uFE0F", "${strings.breastRight}\u2192${strings.breastLeft}", NaturalColor)
-                    ),
-                    selectedSubType = editedSubType,
-                    onSelect = { editedSubType = it }
-                )
-                Spacer(Modifier.height(8.dp))
-                // Row 4: Pump left / right
-                SubTypeRow(
-                    items = listOf(
-                        SubTypeItem(FeedingSubType.PUMP_LEFT.name, "\u2B05\uFE0F", "${strings.pump} ${strings.breastLeft}", PumpColor),
-                        SubTypeItem(FeedingSubType.PUMP_RIGHT.name, "\u27A1\uFE0F", "${strings.pump} ${strings.breastRight}", PumpColor)
-                    ),
-                    selectedSubType = editedSubType,
-                    onSelect = { editedSubType = it }
-                )
-                Spacer(Modifier.height(8.dp))
-                // Row 5: Pump both
-                SubTypeRow(
-                    items = listOf(
-                        SubTypeItem(FeedingSubType.PUMP_BOTH_LR.name, "\u2194\uFE0F", "${strings.pump} L\u2192P", PumpColor),
-                        SubTypeItem(FeedingSubType.PUMP_BOTH_RL.name, "\u2194\uFE0F", "${strings.pump} P\u2192L", PumpColor)
-                    ),
-                    selectedSubType = editedSubType,
-                    onSelect = { editedSubType = it }
-                )
-                // Legacy PUMP (shown only if event was created with it)
-                if (editedSubType == FeedingSubType.PUMP.name) {
-                    Spacer(Modifier.height(8.dp))
+                val isPumpEvent = event.subType?.startsWith("PUMP") == true
+                if (!isPumpEvent) {
+                    // Row 1: Bottle types
                     SubTypeRow(
                         items = listOf(
-                            SubTypeItem(FeedingSubType.PUMP.name, "\uD83E\uDED7", strings.pump, PumpColor)
+                            SubTypeItem(FeedingSubType.BOTTLE.name, "\uD83C\uDF7C", strings.bottle, BottleColor),
+                            SubTypeItem(FeedingSubType.BOTTLE_FORMULA.name, "\uD83C\uDF7C", strings.bottleFormula, BottleColor),
+                            SubTypeItem(FeedingSubType.BOTTLE_EXPRESSED.name, "\uD83E\uDD3C", strings.bottleExpressed, NaturalColor)
                         ),
                         selectedSubType = editedSubType,
                         onSelect = { editedSubType = it }
                     )
+                    Spacer(Modifier.height(8.dp))
+                    // Row 2: Breast left / right
+                    SubTypeRow(
+                        items = listOf(
+                            SubTypeItem(FeedingSubType.BREAST_LEFT.name, "\u2B05\uFE0F", strings.breastLeft, NaturalColor),
+                            SubTypeItem(FeedingSubType.BREAST_RIGHT.name, "\u27A1\uFE0F", strings.breastRight, NaturalColor)
+                        ),
+                        selectedSubType = editedSubType,
+                        onSelect = { editedSubType = it }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    // Row 3: Breast both
+                    SubTypeRow(
+                        items = listOf(
+                            SubTypeItem(FeedingSubType.BREAST_BOTH_LR.name, "\u2194\uFE0F", "${strings.breastLeft}\u2192${strings.breastRight}", NaturalColor),
+                            SubTypeItem(FeedingSubType.BREAST_BOTH_RL.name, "\u2194\uFE0F", "${strings.breastRight}\u2192${strings.breastLeft}", NaturalColor)
+                        ),
+                        selectedSubType = editedSubType,
+                        onSelect = { editedSubType = it }
+                    )
+                } else {
+                    // Pump event: show only pump options
+                    SubTypeRow(
+                        items = listOf(
+                            SubTypeItem(FeedingSubType.PUMP_LEFT.name, "\u2B05\uFE0F", "${strings.pump} ${strings.breastLeft}", PumpColor),
+                            SubTypeItem(FeedingSubType.PUMP_RIGHT.name, "\u27A1\uFE0F", "${strings.pump} ${strings.breastRight}", PumpColor)
+                        ),
+                        selectedSubType = editedSubType,
+                        onSelect = { editedSubType = it }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    SubTypeRow(
+                        items = listOf(
+                            SubTypeItem(FeedingSubType.PUMP_BOTH_LR.name, "\u2194\uFE0F", "${strings.pump} L\u2192P", PumpColor),
+                            SubTypeItem(FeedingSubType.PUMP_BOTH_RL.name, "\u2194\uFE0F", "${strings.pump} P\u2192L", PumpColor)
+                        ),
+                        selectedSubType = editedSubType,
+                        onSelect = { editedSubType = it }
+                    )
+                    // Legacy PUMP (shown only if event was created with it)
+                    if (editedSubType == FeedingSubType.PUMP.name) {
+                        Spacer(Modifier.height(8.dp))
+                        SubTypeRow(
+                            items = listOf(
+                                SubTypeItem(FeedingSubType.PUMP.name, "\uD83E\uDED7", strings.pump, PumpColor)
+                            ),
+                            selectedSubType = editedSubType,
+                            onSelect = { editedSubType = it }
+                        )
+                    }
                 }
                 // ML input for bottle/pump subtypes
                 if (editedSubType in ML_SUBTYPES) {

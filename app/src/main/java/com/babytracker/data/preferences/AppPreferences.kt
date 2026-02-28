@@ -98,7 +98,7 @@ class AppPreferences @Inject constructor(
     /** Starts a 30-day trial; no-op if trial has already been started. */
     fun startTrial() {
         if (proTrialExpiryMs == 0L)
-            proTrialExpiryMs = System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000L
+            proTrialExpiryMs = System.currentTimeMillis() + 3L * 24 * 60 * 60 * 1000L
     }
 
     fun trialDaysRemaining(): Int {

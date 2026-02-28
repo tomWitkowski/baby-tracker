@@ -1,8 +1,10 @@
 package com.babytracker.ui.settings
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,9 +67,11 @@ class SettingsViewModel @Inject constructor(
     fun startTrial() { prefs.startTrial() }
     fun trialDaysRemaining() = prefs.trialDaysRemaining()
     fun hasTrialStarted() = prefs.hasTrialStarted()
+    /** Debug only: expire trial immediately so expiry behaviour can be tested. */
+    fun debugExpireTrial() { if (prefs.hasTrialStarted()) prefs.proTrialExpiryMs = System.currentTimeMillis() - 1000L }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
@@ -185,7 +189,17 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(strings.proSectionTitle, fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Surface(shape = RoundedCornerShape(8.dp), color = if (proIsActive) FeedingColor else TextHint.copy(alpha = 0.2f)) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (proIsActive) FeedingColor else TextHint.copy(alpha = 0.2f),
+                            modifier = Modifier.combinedClickable(
+                                onClick = {},
+                                onLongClick = {
+                                    viewModel.debugExpireTrial()
+                                    proIsActive = viewModel.isProOrTrial()
+                                }
+                            )
+                        ) {
                             Text(
                                 proStatusText,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),

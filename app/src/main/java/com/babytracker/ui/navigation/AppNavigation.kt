@@ -1,9 +1,13 @@
 package com.babytracker.ui.navigation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.navigation.NavHostController
@@ -43,6 +47,7 @@ fun AppNavigation(
 
     CompositionLocalProvider(LocalStrings provides strings) {
         NavHost(
+            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
             navController = navController,
             startDestination = if (startOnboarding) Screen.LanguageSelection.route else Screen.Main.route
         ) {
