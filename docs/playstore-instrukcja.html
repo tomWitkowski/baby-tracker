@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Maluszek — Instrukcja publikacji w Google Play Store</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.65;
+    color: #1a1a2e;
+    background: #fff;
+    padding: 40px 50px;
+    max-width: 820px;
+    margin: 0 auto;
+  }
+
+  /* ── Cover ── */
+  .cover {
+    text-align: center;
+    padding: 60px 0 50px;
+    border-bottom: 3px solid #6c63ff;
+    margin-bottom: 40px;
+  }
+  .cover h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #6c63ff;
+    margin-bottom: 8px;
+  }
+  .cover .subtitle {
+    font-size: 15px;
+    color: #666;
+    margin-bottom: 4px;
+  }
+  .cover .date {
+    font-size: 12px;
+    color: #999;
+    margin-top: 10px;
+  }
+
+  /* ── Section headings ── */
+  h2 {
+    font-size: 17px;
+    font-weight: 700;
+    color: #6c63ff;
+    margin: 36px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e8e6ff;
+  }
+  h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin: 16px 0 6px;
+  }
+
+  /* ── Paragraphs & lists ── */
+  p { margin-bottom: 10px; }
+
+  ul, ol {
+    padding-left: 22px;
+    margin-bottom: 12px;
+  }
+  li { margin-bottom: 5px; }
+
+  /* ── Code blocks ── */
+  pre {
+    background: #f4f3ff;
+    border-left: 4px solid #6c63ff;
+    border-radius: 4px;
+    padding: 12px 14px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 10px 0 16px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  code {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11.5px;
+    background: #f4f3ff;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+
+  /* ── Alert boxes ── */
+  .alert {
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin: 12px 0;
+    font-size: 12.5px;
+  }
+  .alert-danger {
+    background: #fff0f0;
+    border-left: 4px solid #e05252;
+    color: #7a1a1a;
+  }
+  .alert-info {
+    background: #f0f5ff;
+    border-left: 4px solid #4a90e2;
+    color: #1a3a5c;
+  }
+  .alert-success {
+    background: #f0fff4;
+    border-left: 4px solid #38a169;
+    color: #1a4731;
+  }
+
+  /* ── Table ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 12.5px;
+  }
+  th {
+    background: #6c63ff;
+    color: #fff;
+    text-align: left;
+    padding: 8px 10px;
+    font-weight: 600;
+  }
+  td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #eee;
+  }
+  tr:nth-child(even) td { background: #fafafa; }
+
+  /* ── Status badges ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-red    { background: #fee2e2; color: #b91c1c; }
+  .badge-yellow { background: #fef9c3; color: #92400e; }
+  .badge-green  { background: #dcfce7; color: #166534; }
+
+  /* ── Page break ── */
+  .page-break { page-break-before: always; }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 50px;
+    padding-top: 16px;
+    border-top: 1px solid #ddd;
+    font-size: 11px;
+    color: #aaa;
+    text-align: center;
+  }
+
+  /* ── Step counter ── */
+  .steps { counter-reset: step-counter; }
+  .step {
+    counter-increment: step-counter;
+    position: relative;
+    padding-left: 36px;
+    margin-bottom: 14px;
+  }
+  .step::before {
+    content: counter(step-counter);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 24px;
+    height: 24px;
+    background: #6c63ff;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 24px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════ COVER ══════════════════════════════════ -->
+<div class="cover">
+  <h1>Maluszek</h1>
+  <div class="subtitle">Instrukcja publikacji w Google Play Store</div>
+  <div class="subtitle">Zadania do wykonania przez właściciela projektu</div>
+  <div class="date">Wersja 1.0 · 28 lutego 2026</div>
+</div>
+
+<!-- ══════════════════════════════ STATUS OVERVIEW ════════════════════════════ -->
+<h2>Przegląd stanu gotowości</h2>
+
+<table>
+  <tr><th>Zadanie</th><th>Status</th><th>Priorytet</th></tr>
+  <tr><td>applicationId (com.witkowski.maluszek)</td><td><span class="badge badge-green">Zrobione przez Claude</span></td><td>—</td></tr>
+  <tr><td>ProGuard / R8 rules</td><td><span class="badge badge-green">Zrobione przez Claude</span></td><td>—</td></tr>
+  <tr><td>Google Play Billing SDK</td><td><span class="badge badge-green">Zrobione przez Claude</span></td><td>—</td></tr>
+  <tr><td>Konto Google Play Developer</td><td><span class="badge badge-red">Do zrobienia</span></td><td>KRYTYCZNY</td></tr>
+  <tr><td>Generowanie Keystore</td><td><span class="badge badge-red">Do zrobienia</span></td><td>KRYTYCZNY</td></tr>
+  <tr><td>Polityka prywatności</td><td><span class="badge badge-red">Do zrobienia</span></td><td>KRYTYCZNY</td></tr>
+  <tr><td>Produkty subskrypcyjne w Play Console</td><td><span class="badge badge-red">Do zrobienia</span></td><td>Wysoki</td></tr>
+  <tr><td>Grafiki do listingu (ikona, screenshoty)</td><td><span class="badge badge-red">Do zrobienia</span></td><td>Wysoki</td></tr>
+  <tr><td>Konfiguracja signingConfig w Gradle</td><td><span class="badge badge-yellow">Po Keystore</span></td><td>Wysoki</td></tr>
+  <tr><td>Ekran paywall (UI wyboru planu)</td><td><span class="badge badge-yellow">Po Play Console</span></td><td>Średni</td></tr>
+</table>
+
+<!-- ══════════════════════════════════ SECTION A ══════════════════════════════ -->
+<div class="page-break"></div>
+<h2>A — Konto Google Play Developer</h2>
+<p>Jednorazowe, wymagane przed jakimkolwiek uploadem do sklepu. Opłata: <strong>25 USD</strong>.</p>
+
+<div class="steps">
+  <div class="step">Wejdź na <strong>play.google.com/console</strong> i zaloguj się kontem Google (najlepiej dedykowanym dla dewelopera, nie prywatnym).</div>
+  <div class="step">Kliknij <strong>Pierwsze kroki</strong> i postępuj zgodnie z kreatorem rejestracji.</div>
+  <div class="step">Zapłać opłatę rejestracyjną <strong>25 USD</strong> kartą kredytową lub debetową.</div>
+  <div class="step">Uzupełnij profil dewelopera: imię / nazwa firmy, adres, adres e-mail kontaktowy.</div>
+  <div class="step">Zaakceptuj wszystkie umowy developerskie Google.</div>
+  <div class="step">Poczekaj na weryfikację konta (zwykle kilka minut, max kilka godzin).</div>
+</div>
+
+<div class="alert alert-info">
+  Po utworzeniu konta możesz od razu stworzyć wpis aplikacji — nie musisz jeszcze mieć gotowego APK/AAB.
+</div>
+
+<!-- ══════════════════════════════════ SECTION B ══════════════════════════════ -->
+<h2>B — Generowanie Keystore (klucz podpisywania)</h2>
+
+<div class="alert alert-danger">
+  ⚠️ <strong>KRYTYCZNE:</strong> Keystore generujesz <em>raz na zawsze</em>. Utrata pliku = niemożność aktualizacji aplikacji w sklepie. Wykonaj kopię zapasową w bezpiecznym miejscu (np. zaszyfrowana chmura, pendrive w sejfie).
+</div>
+
+<h3>1. Generowanie pliku keystore</h3>
+<p>Wykonaj w terminalu (wymaga zainstalowanej Javy / Android SDK):</p>
+
+<pre>keytool -genkey -v \
+  -keystore ~/maluszek-release.keystore \
+  -alias maluszek \
+  -keyalg RSA -keysize 2048 \
+  -validity 10000</pre>
+
+<p>Zostaniesz zapytany o:</p>
+<ul>
+  <li><strong>Hasło keystore</strong> — minimum 6 znaków, zapamiętaj je!</li>
+  <li><strong>Hasło klucza</strong> — może być takie samo jak keystore</li>
+  <li>Imię i nazwisko, organizacja, miasto, kraj — możesz podać "Unknown" dla pól nieobowiązkowych</li>
+</ul>
+
+<h3>2. Dodanie danych do <code>local.properties</code></h3>
+<p>Otwórz plik <code>local.properties</code> w głównym katalogu projektu i dopisz na końcu:</p>
+
+<pre>KEYSTORE_PATH=/Users/TWOJ_USER/maluszek-release.keystore
+KEYSTORE_PASSWORD=twoje_haslo_keystore
+KEY_ALIAS=maluszek
+KEY_PASSWORD=twoje_haslo_klucza</pre>
+
+<div class="alert alert-danger">
+  ⚠️ Plik <code>local.properties</code> jest już w <code>.gitignore</code> — nigdy nie commituj go do repozytorium!
+</div>
+
+<h3>3. Dodanie signingConfig do <code>app/build.gradle.kts</code></h3>
+<p>Po zapisaniu <code>local.properties</code> powiedz Claude — doda konfigurację podpisywania automatycznie.</p>
+
+<h3>4. Kopia zapasowa keystore</h3>
+<p>Skopiuj plik <code>maluszek-release.keystore</code> w minimum 2 miejsca:</p>
+<ul>
+  <li>Zaszyfrowana chmura (np. 1Password, Bitwarden, Google Drive z hasłem archiwum)</li>
+  <li>Fizyczny nośnik (pendrive) przechowywany oddzielnie od komputera</li>
+</ul>
+
+<!-- ══════════════════════════════════ SECTION C ══════════════════════════════ -->
+<div class="page-break"></div>
+<h2>C — Polityka prywatności</h2>
+<p>Google <strong>wymaga</strong> linku do polityki prywatności dla każdej aplikacji w sklepie. Musi być publicznie dostępna pod stałym URL-em.</p>
+
+<h3>Krok 1 — Wygeneruj treść</h3>
+<div class="steps">
+  <div class="step">Wejdź na <strong>app-privacy-policy.com</strong> lub <strong>privacypolicygenerator.info</strong></div>
+  <div class="step">Podaj nazwę aplikacji: <strong>Maluszek</strong></div>
+  <div class="step">Podaj właściciela: <strong>Tom Witkowski</strong></div>
+  <div class="step">Zaznacz zbierane dane:
+    <ul>
+      <li>Dane sieciowe (Wi-Fi do synchronizacji P2P)</li>
+      <li>Dane urządzenia (ID urządzenia do synchronizacji)</li>
+      <li><em>Brak danych osobowych dzieci</em> — aplikacja nie zbiera danych z serwera</li>
+    </ul>
+  </div>
+  <div class="step">Pobierz wygenerowany HTML</div>
+</div>
+
+<h3>Krok 2 — Opublikuj na GitHub Pages (bezpłatnie)</h3>
+<div class="steps">
+  <div class="step">Utwórz nowe repozytorium GitHub: <code>tomWitkowski/maluszek-privacy</code> (może być publiczne)</div>
+  <div class="step">Wgraj pobrany plik jako <code>index.html</code></div>
+  <div class="step">Przejdź do: Settings → Pages → Source: <strong>Deploy from branch</strong> → branch: <strong>main</strong></div>
+  <div class="step">Po kilku minutach polityka będzie dostępna pod adresem:<br>
+    <code>https://tomwitkowski.github.io/maluszek-privacy/</code>
+  </div>
+  <div class="step">Skopiuj ten URL — będzie potrzebny w Play Console</div>
+</div>
+
+<!-- ══════════════════════════════════ SECTION D ══════════════════════════════ -->
+<h2>D — Produkty subskrypcyjne w Play Console</h2>
+<p>Wymagane, żeby Google Play Billing w aplikacji mógł w ogóle działać. Produkty tworzysz w Play Console <em>po</em> założeniu konta i stworzeniu wpisu aplikacji.</p>
+
+<div class="alert alert-info">
+  Subskrypcje muszą mieć dokładnie te same ID co w kodzie aplikacji. Nie można ich zmienić po opublikowaniu.
+</div>
+
+<div class="steps">
+  <div class="step">W Play Console otwórz swoją aplikację → <strong>Zarabianie → Subskrypcje</strong></div>
+  <div class="step">Kliknij <strong>Utwórz subskrypcję</strong> i skonfiguruj pierwszą:
+    <table style="margin-top:8px">
+      <tr><th>Pole</th><th>Wartość</th></tr>
+      <tr><td>ID produktu</td><td><code>pro_monthly</code></td></tr>
+      <tr><td>Nazwa</td><td>Maluszek Pro — miesięczna</td></tr>
+      <tr><td>Cena</td><td>np. 9,99 PLN / miesiąc</td></tr>
+      <tr><td>Okres próbny</td><td>3 dni (opcjonalne)</td></tr>
+    </table>
+  </div>
+  <div class="step">Utwórz drugą subskrypcję:
+    <table style="margin-top:8px">
+      <tr><th>Pole</th><th>Wartość</th></tr>
+      <tr><td>ID produktu</td><td><code>pro_yearly</code></td></tr>
+      <tr><td>Nazwa</td><td>Maluszek Pro — roczna</td></tr>
+      <tr><td>Cena</td><td>np. 69,99 PLN / rok</td></tr>
+    </table>
+  </div>
+  <div class="step">Ustaw status obu subskrypcji na <strong>Aktywna</strong> i zapisz</div>
+</div>
+
+<div class="alert alert-danger">
+  ⚠️ ID produktów (<code>pro_monthly</code>, <code>pro_yearly</code>) muszą dokładnie odpowiadać stałym w pliku <code>BillingManager.kt</code>. Jeśli chcesz użyć innych nazw — powiedz Claude, który zaktualizuje kod.
+</div>
+
+<!-- ══════════════════════════════════ SECTION E ══════════════════════════════ -->
+<div class="page-break"></div>
+<h2>E — Grafiki do listingu w Play Store</h2>
+<p>Bez tych zasobów Google nie pozwoli opublikować aplikacji.</p>
+
+<table>
+  <tr><th>Zasób</th><th>Rozmiar</th><th>Format</th><th>Uwagi</th></tr>
+  <tr><td><strong>Ikona aplikacji</strong></td><td>512 × 512 px</td><td>PNG, bez przezroczystości</td><td>Wymagana</td></tr>
+  <tr><td><strong>Feature Graphic</strong></td><td>1024 × 500 px</td><td>PNG lub JPG</td><td>Wymagana</td></tr>
+  <tr><td><strong>Screenshoty (telefon)</strong></td><td>min. 320 px, max 3840 px po dłuższym boku</td><td>PNG lub JPG</td><td>Min. 2 szt., wymagane</td></tr>
+  <tr><td>Screenshoty (tablet 7")</td><td>j.w.</td><td>PNG lub JPG</td><td>Opcjonalne</td></tr>
+  <tr><td>Film promocyjny</td><td>YouTube URL</td><td>—</td><td>Opcjonalny</td></tr>
+</table>
+
+<h3>Narzędzia do tworzenia grafik</h3>
+<ul>
+  <li><strong>Canva</strong> (canva.com) — bezpłatne szablony dla Google Play, gotowe rozmiary</li>
+  <li><strong>Figma</strong> — bardziej profesjonalne, wymaga podstawowej znajomości</li>
+  <li><strong>Android Studio Device Manager</strong> — screenshoty z emulatora (File → Take Screenshot)</li>
+</ul>
+
+<h3>Wskazówki dot. screenshotów</h3>
+<ul>
+  <li>Pokaż główne funkcje: dodawanie karmienia, pieluszki, ekran dashboard</li>
+  <li>Możesz dodać ozdobne ramki telefonu i nagłówki tekstowe (Canva to umożliwia)</li>
+  <li>Użyj realnych danych — screenshoty z wypełnioną historią wyglądają lepiej niż puste ekrany</li>
+</ul>
+
+<!-- ══════════════════════════════════ SECTION F ══════════════════════════════ -->
+<h2>F — Opis aplikacji w Play Store (teksty)</h2>
+<p>Przygotuj dwa teksty po polsku (i opcjonalnie po angielsku):</p>
+
+<h3>Krótki opis (maks. 80 znaków)</h3>
+<p>Przykład:</p>
+<pre>Śledź karmienia, pieluszki i sen swojego maluszka — szybko i bez rejestracji.</pre>
+
+<h3>Pełny opis (maks. 4000 znaków)</h3>
+<p>Zaproponowany szkic:</p>
+<pre>Maluszek to prosta aplikacja dla rodziców noworodków, która pozwala błyskawicznie
+rejestrować najważniejsze zdarzenia: karmienia (pierś, butelka, odciąganie),
+pieluszki oraz ulewania.
+
+✓ Rejestracja jednym dotknięciem — bez zbędnych kroków
+✓ Widget na ekran główny dla jeszcze szybszego dostępu
+✓ Synchronizacja między urządzeniami przez Wi-Fi (bez chmury, bez konta)
+✓ Przypomnienia o karmieniu
+✓ Eksport danych do pliku CSV
+✓ Działa w pełni offline — Twoje dane nigdy nie opuszczają urządzenia
+
+Wersja Pro odblokuje synchronizację z wieloma urządzeniami jednocześnie.</pre>
+
+<!-- ══════════════════════════════════ CHECKLIST ═══════════════════════════════ -->
+<div class="page-break"></div>
+<h2>Lista kontrolna przed wysłaniem do recenzji</h2>
+
+<table>
+  <tr><th>#</th><th>Zadanie</th><th>Wykonane?</th></tr>
+  <tr><td>1</td><td>Konto Google Play Developer aktywne</td><td>☐</td></tr>
+  <tr><td>2</td><td>Keystore wygenerowany i kopia zapasowa zrobiona</td><td>☐</td></tr>
+  <tr><td>3</td><td>signingConfig dodany do build.gradle.kts</td><td>☐</td></tr>
+  <tr><td>4</td><td>Polityka prywatności opublikowana i URL skopiowany</td><td>☐</td></tr>
+  <tr><td>5</td><td>Subskrypcje pro_monthly i pro_yearly aktywne w Play Console</td><td>☐</td></tr>
+  <tr><td>6</td><td>Ikona 512×512 px przygotowana</td><td>☐</td></tr>
+  <tr><td>7</td><td>Feature Graphic 1024×500 px przygotowany</td><td>☐</td></tr>
+  <tr><td>8</td><td>Min. 2 screenshoty telefonu przygotowane</td><td>☐</td></tr>
+  <tr><td>9</td><td>Krótki i pełny opis aplikacji napisany</td><td>☐</td></tr>
+  <tr><td>10</td><td>Klasyfikacja treści wypełniona w Play Console</td><td>☐</td></tr>
+  <tr><td>11</td><td>AAB (release build) wygenerowany i podpisany</td><td>☐</td></tr>
+  <tr><td>12</td><td>AAB wgrany do wewnętrznego testu i przetestowany</td><td>☐</td></tr>
+  <tr><td>13</td><td>Wersja wysłana do recenzji Google</td><td>☐</td></tr>
+</table>
+
+<div class="alert alert-success">
+  Po wykonaniu punktów 1–5 napisz do Claude — wykona za Ciebie: signingConfig w Gradle, ekran wyboru planu Pro (paywall) i przygotowanie release buildu.
+</div>
+
+<div class="footer">
+  Maluszek · Instrukcja Play Store · Wygenerowano 28 lutego 2026
+</div>
+
+</body>
+</html>
