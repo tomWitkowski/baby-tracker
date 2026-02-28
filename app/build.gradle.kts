@@ -11,7 +11,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.babytracker"
+        applicationId = "com.witkowski.babytracker"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -55,6 +55,7 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.navigation.compose)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.billing.ktx)
 
     // Hilt
     implementation(libs.hilt.android)

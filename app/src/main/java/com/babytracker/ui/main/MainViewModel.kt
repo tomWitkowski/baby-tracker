@@ -2,6 +2,7 @@ package com.babytracker.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.babytracker.billing.BillingManager
 import com.babytracker.data.db.entity.BabyEvent
 import com.babytracker.data.db.entity.DiaperSubType
 import com.babytracker.data.db.entity.FeedingSubType
@@ -23,7 +24,8 @@ class MainViewModel @Inject constructor(
     private val repository: EventRepository,
     private val syncManager: SyncManager,
     private val appPreferences: AppPreferences,
-    private val reminderScheduler: FeedingReminderScheduler
+    private val reminderScheduler: FeedingReminderScheduler,
+    val billingManager: BillingManager
 ) : ViewModel() {
 
     val recentEvents: StateFlow<List<BabyEvent>> = repository.getAllEvents()
@@ -98,7 +100,15 @@ class MainViewModel @Inject constructor(
 
     fun denyTrust() = syncManager.denyTrust()
 
-    fun isProOrTrial() = appPreferences.isProOrTrial()
+    /** True when user has an active Play Store subscription OR is within trial period. */
+    val isProSubscription: StateFlow<Boolean> = billingManager.isPro
+        .stateIn(viewModelScope, SharingStarted.Eagerly, appPreferences.isPro)
+
+    fun isProOrTrial(): Boolean = billingManager.isPro.value || appPreferences.isProOrTrial()
     fun hasTrialStarted() = appPreferences.hasTrialStarted()
     fun startTrial() { appPreferences.startTrial() }
+
+    fun refreshPurchases() {
+        viewModelScope.launch { billingManager.refreshPurchases() }
+    }
 }
