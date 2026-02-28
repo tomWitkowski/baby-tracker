@@ -451,6 +451,8 @@ class SyncManager @Inject constructor(
 
         if (!prefs.isProOrTrial()) {
             _syncState.value = SyncState.ProRequired
+            delay(100L)
+            _syncState.value = SyncState.Idle
             return
         }
 
